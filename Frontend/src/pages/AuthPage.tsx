@@ -8,6 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Heart, User, Building2 } from 'lucide-react';
+import { NEPAL_DISTRICTS } from '@/data/helpResources';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const AuthPage = () => {
   const { t } = useLanguage();
@@ -18,13 +26,14 @@ const AuthPage = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [district, setDistrict] = useState<string>('Kathmandu');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLogin) {
       login(email, password, role);
     } else {
-      signup(name, email, password, role);
+      signup(name, email, password, role, role === 'user' ? district : undefined);
     }
     navigate(role === 'ngo' ? '/ngo-dashboard' : '/dashboard');
   };
@@ -64,6 +73,26 @@ const AuthPage = () => {
                 <div>
                   <Label htmlFor="name">{role === 'ngo' ? t('Organization Name', 'संस्थाको नाम') : t('Your Name', 'तपाईंको नाम')}</Label>
                   <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder={role === 'ngo' ? 'Helping Hands Nepal' : 'Sita'} className="mt-1" />
+                </div>
+              )}
+              {!isLogin && role === 'user' && (
+                <div>
+                  <Label>{t('Your district (for local resources)', 'तपाईंको जिल्ला (स्थानीय स्रोतको लागि)')}</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
+                    {t('We never ask for your exact address — district only.', 'हामी तपाईंको ठ्याक्कै ठेगाना सोध्दैनौं — जिल्ला मात्र।')}
+                  </p>
+                  <Select value={district} onValueChange={setDistrict}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={t('Select district', 'जिल्ला छान्नुहोस्')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NEPAL_DISTRICTS.map((d) => (
+                        <SelectItem key={d} value={d}>
+                          {d}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               <div>

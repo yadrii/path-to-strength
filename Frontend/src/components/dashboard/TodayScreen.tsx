@@ -196,93 +196,189 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
       </div>
 
       {/* Main interaction row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '1.25rem', alignItems: 'start', fontFamily: 'DM Sans, sans-serif' }}>
-        
-        {/* Left: Component Card */}
-        <div style={{
-          background: 'var(--card, #fff)',
-          borderRadius: 20,
-          padding: '2rem',
-          boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
-          minHeight: 280,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative',
-        }}>
-          {/* Dots top center */}
-          <div className={pulse ? 'dots-pulse' : ''} style={{ position: 'absolute', top: '1.5rem', display: 'flex', gap: 8, justifyContent: 'center', width: '100%' }}>
-            {[0,1,2,3,4].map(i => (
-              <div key={i} className="progress-dot" style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: i < step ? 'var(--mood-accent, #e08080)' : '#f0ebe5',
-                transition: 'background 400ms',
-              }} />
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) minmax(260px, 300px)',
+          gap: '1.25rem',
+          alignItems: 'stretch',
+          fontFamily: 'DM Sans, sans-serif',
+        }}
+      >
+        {/* Left: quiz card — same outer size, denser, larger inner content */}
+        <div
+          style={{
+            background: 'var(--card, #fff)',
+            borderRadius: 20,
+            padding: '1.25rem 1.75rem 1.75rem',
+            boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
+            minHeight: 300,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            position: 'relative',
+          }}
+        >
+          {/* Step dots — compact strip */}
+          <div
+            className={pulse ? 'dots-pulse' : ''}
+            style={{
+              display: 'flex',
+              gap: 10,
+              justifyContent: 'center',
+              marginBottom: 4,
+            }}
+          >
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="progress-dot"
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  background: i < step ? 'var(--mood-accent, #e08080)' : '#ebe4dc',
+                  transition: 'background 400ms, transform 200ms',
+                }}
+              />
             ))}
           </div>
 
-          <div style={{ width: '100%', maxWidth: 500, margin: '2rem auto 0', overflow: 'hidden' }}>
+          <div style={{ width: '100%', maxWidth: 560, margin: '0 auto', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
             {!done ? (
               <div key={current.id} className={sliding ? 'slide-exit' : 'slide-enter'}>
-                <p style={{ fontSize: 11, color: '#b0a89a', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
+                <p
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#8a7d72',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    margin: '0 0 10px',
+                  }}
+                >
                   {current.category}
                 </p>
-                <p style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, color: '#2d2520', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                <p
+                  style={{
+                    fontFamily: 'Playfair Display, serif',
+                    fontSize: 'clamp(1.35rem, 2.6vw, 1.85rem)',
+                    fontWeight: 500,
+                    color: '#2d2520',
+                    margin: '0 0 1.1rem',
+                    lineHeight: 1.45,
+                    maxWidth: '42ch',
+                  }}
+                >
                   {current.question}
                 </p>
 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                  {current.type === 'colors' && MOOD_PALETTE.map(c => (
-                    <button
-                      key={c.value} onClick={() => submit(c.value)}
-                      style={{
-                        width: 48, height: 48, borderRadius: 12, border: 'none',
-                        background: c.hex, cursor: 'pointer', transition: 'transform 150ms',
-                      }}
-                      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                    />
-                  ))}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: current.type === 'colors' ? 14 : 12,
+                    alignItems: 'center',
+                  }}
+                >
+                  {current.type === 'colors' &&
+                    MOOD_PALETTE.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        title={c.value}
+                        onClick={() => submit(c.value)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.06)';
+                          e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.18)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+                        }}
+                        style={{
+                          width: 68,
+                          height: 68,
+                          borderRadius: 16,
+                          border: '2px solid rgba(255,255,255,0.85)',
+                          background: c.hex,
+                          cursor: 'pointer',
+                          transition: 'transform 160ms ease, box-shadow 160ms ease',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                          flexShrink: 0,
+                        }}
+                      />
+                    ))}
 
-                  {current.type === 'options' && current.options?.map(opt => (
-                    <button
-                      key={opt.value} onClick={() => submit(opt.value)}
-                      style={{
-                        padding: '0.8rem 1.4rem', borderRadius: 999, border: '1px solid #e8e2dc',
-                        background: '#fff', color: '#5a4e47', fontFamily: 'DM Sans, sans-serif',
-                        fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 200ms',
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                  {current.type === 'options' &&
+                    current.options?.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => submit(opt.value)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--mood-accent, #c9a08a)';
+                          e.currentTarget.style.background = '#fffdfb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e8e2dc';
+                          e.currentTarget.style.background = '#fff';
+                        }}
+                        style={{
+                          padding: '0.95rem 1.5rem',
+                          borderRadius: 999,
+                          border: '1.5px solid #e8e2dc',
+                          background: '#fff',
+                          color: '#3d3530',
+                          fontFamily: 'DM Sans, sans-serif',
+                          fontSize: 16,
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          transition: 'border-color 200ms, background 200ms',
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
 
                   {current.type === 'text' && (
                     <div style={{ width: '100%' }}>
                       <input
                         type="text"
                         value={textVal}
-                        onChange={e => setTextVal(e.target.value)}
+                        onChange={(e) => setTextVal(e.target.value)}
                         placeholder={current.placeholder}
-                        onKeyDown={e => e.key === 'Enter' && textVal.trim() && submit(textVal.trim())}
+                        onKeyDown={(e) => e.key === 'Enter' && textVal.trim() && submit(textVal.trim())}
                         style={{
-                          width: '100%', padding: '0.8rem 1.2rem',
-                          borderRadius: 12, border: '1px solid #e8e2dc',
-                          background: '#fdfbfa', fontFamily: 'DM Sans, sans-serif',
-                          fontSize: 15, outline: 'none', color: '#2d2520',
+                          width: '100%',
+                          padding: '1rem 1.25rem',
+                          borderRadius: 14,
+                          border: '1.5px solid #e0d8d0',
+                          background: '#fdfbf9',
+                          fontFamily: 'DM Sans, sans-serif',
+                          fontSize: 17,
+                          outline: 'none',
+                          color: '#2d2520',
+                          boxSizing: 'border-box',
                         }}
                       />
                       <button
+                        type="button"
                         onClick={() => textVal.trim() && submit(textVal.trim())}
                         disabled={!textVal.trim()}
                         style={{
-                          marginTop: 10, padding: '0.6rem 1.4rem',
-                          borderRadius: 999, border: 'none',
+                          marginTop: 12,
+                          padding: '0.7rem 1.6rem',
+                          borderRadius: 999,
+                          border: 'none',
                           background: textVal.trim() ? 'var(--mood-accent, #e08080)' : '#e8e2dc',
                           color: textVal.trim() ? '#fff' : '#9a8e84',
                           cursor: textVal.trim() ? 'pointer' : 'not-allowed',
                           fontFamily: 'DM Sans, sans-serif',
-                          fontSize: 13, fontWeight: 500, transition: 'background 200ms',
+                          fontSize: 15,
+                          fontWeight: 600,
+                          transition: 'background 200ms',
                         }}
                       >
                         {t('Next →', 'अगाडि →')}
@@ -292,13 +388,29 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
                 </div>
               </div>
             ) : (
-              <div className="slide-enter" style={{ textAlign: 'center', padding: '1rem 0' }}>
-                <p style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, color: 'var(--mood-accent, #e08080)', lineHeight: 1.6, marginBottom: 8 }}>
+              <div className="slide-enter" style={{ textAlign: 'center', padding: '0.5rem 0 0' }}>
+                <p
+                  style={{
+                    fontFamily: 'Playfair Display, serif',
+                    fontSize: 'clamp(1.35rem, 2.5vw, 1.75rem)',
+                    color: 'var(--mood-accent, #e08080)',
+                    lineHeight: 1.5,
+                    margin: '0 0 14px',
+                  }}
+                >
                   {t('5 Decisions. Yours. Today.', '५ निर्णय। तपाईंका। आज।')}
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 20 }}>
-                  {[0,1,2,3,4].map(i => (
-                    <div key={i} style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--mood-accent, #e08080)' }}/>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 99,
+                        background: 'var(--mood-accent, #e08080)',
+                      }}
+                    />
                   ))}
                 </div>
               </div>
@@ -306,29 +418,52 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
           </div>
         </div>
 
-        {/* Right: Why Panel */}
-        <div style={{
-          background: 'var(--card, #fff)', borderRadius: 20, padding: '1.5rem',
-          boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
-        }}>
-          <p style={{ fontSize: 11, color: '#9a8e84', letterSpacing: '0.08em', marginBottom: 10 }}>{t('Why this?', 'किन यस री?')}</p>
-          <p style={{ fontSize: 13, color: '#5a4e47', lineHeight: 1.75 }}>
+        {/* Right: Why panel — aligned height, slightly larger type */}
+        <div
+          style={{
+            background: 'var(--card, #fff)',
+            borderRadius: 20,
+            padding: '1.35rem 1.5rem',
+            boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            minHeight: 300,
+          }}
+        >
+          <p style={{ fontSize: 12, fontWeight: 600, color: '#8a7d72', letterSpacing: '0.1em', marginBottom: 10 }}>
+            {t('Why this?', 'किन यसरी?')}
+          </p>
+          <p style={{ fontSize: 15, color: '#4a4039', lineHeight: 1.7, margin: 0 }}>
             {done
-              ? t('You made 5 decisions today. This small sequence gives your mind stability.', 'तपाईंले आज ५ निर्णय लिनुभयो। यो सानो क्रमले तपाईंको मस्तिष्कलाई स्थिरता दिन्छ।')
+              ? t(
+                  'You made 5 decisions today. This small sequence gives your mind stability.',
+                  'तपाईंले आज ५ निर्णय लिनुभयो। यो सानो क्रमले तपाईंको मस्तिष्कलाई स्थिरता दिन्छ।',
+                )
               : current.why ?? t('One decision at a time reduces pressure.', 'एक पटकमा एउटा निर्णयले दबाब घटाउँछ।')}
           </p>
           {!done && (
-            <div style={{ marginTop: '1.5rem', padding: '0.8rem', background: '#fdf9f6', borderRadius: 10 }}>
-              <p style={{ fontSize: 10, color: '#c0b4ab', letterSpacing: '0.06em', marginBottom: 4 }}>{t('Progress', 'प्रगति')}</p>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {[0,1,2,3,4].map(i => (
-                  <div key={i} style={{
-                    height: 4, flex: 1, borderRadius: 99,
-                    background: i < step ? 'var(--mood-accent, #e08080)' : '#f0ebe5',
-                  }}/>
-                ))}
+            <div style={{ marginTop: 'auto', paddingTop: '1.25rem' }}>
+              <div style={{ padding: '1rem', background: 'linear-gradient(180deg, #fdf9f6 0%, #faf6f2 100%)', borderRadius: 12, border: '1px solid #f0e8e0' }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#a8988c', letterSpacing: '0.08em', marginBottom: 8 }}>{t('Progress', 'प्रगति')}</p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        height: 6,
+                        flex: 1,
+                        borderRadius: 99,
+                        background: i < step ? 'var(--mood-accent, #e08080)' : '#ebe4dc',
+                        transition: 'background 400ms',
+                      }}
+                    />
+                  ))}
+                </div>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#6b5f56', marginTop: 10 }}>
+                  {step} / 5 {t('done', 'पूरा भयो')}
+                </p>
               </div>
-              <p style={{ fontSize: 11, color: '#9a8e84', marginTop: 6 }}>{step} / 5 {t('done', 'पूरा भयो')}</p>
             </div>
           )}
         </div>
