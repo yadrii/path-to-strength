@@ -1,38 +1,188 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { getMainApiBase } from '@/lib/apiBase';
+import {
+  fetchDailyRestoration,
+  saveDailyRestoration,
+  type DailyRestorationState,
+} from '@/lib/restorationApi';
+import { setJourneyStartFromServer, clearServerJourneyStart } from '@/lib/journeyStorage';
+import { clearRootMoodThemeOverrides } from '@/lib/themeRoot';
 
 const DISTRICT_KEY = 'sahara_user_district';
+const TOKEN_KEY = 'sahara_auth_token';
 
 interface AuthUser {
   id: string;
   name: string;
   email: string;
   role: 'user' | 'ngo';
-  /** Set at signup (user) or from localStorage — never precise GPS, district only */
   district?: string;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
-  login: (email: string, password: string, role: 'user' | 'ngo') => void;
-  signup: (name: string, email: string, password: string, role: 'user' | 'ngo', district?: string) => void;
+  login: (email: string, password: string) => Promise<AuthUser>;
+  signup: (
+    name: string,
+    email: string,
+    password: string,
+    role: 'user' | 'ngo',
+    district?: string,
+  ) => Promise<AuthUser>;
   logout: () => void;
   updateDistrict: (district: string) => void;
   isAuthenticated: boolean;
+  /** False until we finish checking localStorage token against /api/auth/me */
+  authReady: boolean;
+  /** Daily Restoration progress from API; null if not loaded or logged out */
+  restoration: DailyRestorationState | null;
+  /** False while fetching /api/auth/daily-restoration after login/session restore */
+  restorationReady: boolean;
+  saveRestoration: (patch: {
+    daily_restoration_date: string;
+    daily_restoration_step: number;
+    journey_start_ms?: number;
+  }) => Promise<void>;
+}
+
+async function readError(res: Response): Promise<string> {
+  try {
+    const j = (await res.json()) as { detail?: unknown };
+    const d = j.detail;
+    if (typeof d === 'string') return d;
+    if (Array.isArray(d))
+      return d
+        .map((x: { msg?: string }) => x.msg ?? '')
+        .filter(Boolean)
+        .join(', ');
+    return 'Request failed';
+  } catch {
+    return 'Request failed';
+  }
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  login: () => {},
-  signup: () => {},
+  login: async () => {
+    throw new Error('no provider');
+  },
+  signup: async () => {
+    throw new Error('no provider');
+  },
   logout: () => {},
   updateDistrict: () => {},
   isAuthenticated: false,
+  authReady: false,
+  restoration: null,
+  restorationReady: true,
+  saveRestoration: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [restoration, setRestoration] = useState<DailyRestorationState | null>(null);
+  const [restorationReady, setRestorationReady] = useState(true);
+
+  const hydrateRestoration = useCallback(async (token: string) => {
+    setRestorationReady(false);
+    try {
+      const r = await fetchDailyRestoration(token);
+      setRestoration(r);
+      setJourneyStartFromServer(r.journey_start_ms);
+    } catch {
+      setRestoration(null);
+    } finally {
+      setRestorationReady(true);
+    }
+  }, []);
+
+  const persistSession = useCallback((token: string, u: AuthUser) => {
+    try {
+      localStorage.setItem(TOKEN_KEY, token);
+      if (u.role === 'user' && u.district) {
+        localStorage.setItem(DISTRICT_KEY, u.district);
+      }
+    } catch {
+      /* ignore */
+    }
+    setUser(u);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let token: string | null = null;
+      try {
+        token = localStorage.getItem(TOKEN_KEY);
+      } catch {
+        token = null;
+      }
+      if (!token) {
+        if (!cancelled) {
+          clearServerJourneyStart();
+          clearRootMoodThemeOverrides();
+          setRestoration(null);
+          setRestorationReady(true);
+          setAuthReady(true);
+        }
+        return;
+      }
+      const base = getMainApiBase();
+      try {
+        const res = await fetch(base + '/api/auth/me', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (!res.ok) throw new Error('stale');
+        const data = (await res.json()) as AuthUser;
+        if (!cancelled) setUser(data);
+        if (!cancelled) await hydrateRestoration(token);
+      } catch {
+        try {
+          localStorage.removeItem(TOKEN_KEY);
+        } catch {
+          /* ignore */
+        }
+        if (!cancelled) {
+          clearServerJourneyStart();
+          clearRootMoodThemeOverrides();
+          setRestoration(null);
+          setRestorationReady(true);
+        }
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrateRestoration]);
+
+  const saveRestoration = useCallback(
+    async (patch: {
+      daily_restoration_date: string;
+      daily_restoration_step: number;
+      journey_start_ms?: number;
+    }) => {
+      let token: string | null = null;
+      try {
+        token = localStorage.getItem(TOKEN_KEY);
+      } catch {
+        token = null;
+      }
+      if (!token) return;
+      try {
+        const next = await saveDailyRestoration(token, patch);
+        setRestoration(next);
+        setJourneyStartFromServer(next.journey_start_ms);
+      } catch {
+        /* offline or server error — keep local UI; next refresh may sync */
+      }
+    },
+    [],
+  );
 
   const updateDistrict = useCallback((district: string) => {
     try {
@@ -43,44 +193,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser((u) => (u ? { ...u, district } : null));
   }, []);
 
-  const login = (email: string, _password: string, role: 'user' | 'ngo') => {
-    let district: string | undefined;
+  const login = useCallback(
+    async (email: string, password: string): Promise<AuthUser> => {
+      const base = getMainApiBase();
+      const res = await fetch(base + "/api/auth/login", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) throw new Error(await readError(res));
+      const data = (await res.json()) as { access_token: string; user: AuthUser };
+      persistSession(data.access_token, data.user);
+      await hydrateRestoration(data.access_token);
+      return data.user;
+    },
+    [persistSession, hydrateRestoration],
+  );
+
+  const signup = useCallback(
+    async (
+      name: string,
+      email: string,
+      password: string,
+      role: 'user' | 'ngo',
+      district?: string,
+    ): Promise<AuthUser> => {
+      const base = getMainApiBase();
+      const res = await fetch(base + "/api/auth/register", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          role,
+          district: role === 'user' ? district : undefined,
+        }),
+      });
+      if (!res.ok) throw new Error(await readError(res));
+      const data = (await res.json()) as { access_token: string; user: AuthUser };
+      persistSession(data.access_token, data.user);
+      await hydrateRestoration(data.access_token);
+      return data.user;
+    },
+    [persistSession, hydrateRestoration],
+  );
+
+  const logout = useCallback(() => {
     try {
-      district = localStorage.getItem(DISTRICT_KEY) ?? undefined;
+      localStorage.removeItem(TOKEN_KEY);
     } catch {
-      district = undefined;
+      /* ignore */
     }
-    setUser({
-      id: '1',
-      name: role === 'user' ? 'Sita' : 'Helping Hands NGO',
-      email,
-      role,
-      district: role === 'user' ? district : undefined,
-    });
-  };
-
-  const signup = (name: string, email: string, _password: string, role: 'user' | 'ngo', district?: string) => {
-    if (role === 'user' && district) {
-      try {
-        localStorage.setItem(DISTRICT_KEY, district);
-      } catch {
-        /* ignore */
-      }
-    }
-    setUser({
-      id: '1',
-      name,
-      email,
-      role,
-      district: role === 'user' ? district : undefined,
-    });
-  };
-
-  const logout = () => setUser(null);
+    clearServerJourneyStart();
+    clearRootMoodThemeOverrides();
+    setRestoration(null);
+    setRestorationReady(true);
+    setUser(null);
+  }, []);
 
   return (
     <AuthContext.Provider
-      value={{ user, login, signup, logout, updateDistrict, isAuthenticated: !!user }}
+      value={{
+        user,
+        login,
+        signup,
+        logout,
+        updateDistrict,
+        isAuthenticated: !!user,
+        authReady,
+        restoration,
+        restorationReady,
+        saveRestoration,
+      }}
     >
       {children}
     </AuthContext.Provider>

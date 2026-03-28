@@ -4,10 +4,18 @@ import { ArrowRight, Mic, MicOff } from 'lucide-react';
 import saharaAvatar from '@/assets/sahara-avatar.png';
 
 const INTRO_STORAGE_KEY = 'sahara-chat-intro-v1';
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+
+function getChatApiBase(): string {
+  const fromEnv =
+    import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.VITE_BACKEND_URL as string | undefined);
+  const raw = (fromEnv || 'http://127.0.0.1:5000').replace(/\/$/, '');
+  return raw.replace(/\/api\/?$/i, '');
+}
+
+const API_BASE = getChatApiBase();
 
 const SAHARA_SYSTEM_PROMPT =
-  '[You should speak in answer only in clean and precise nepali. do not mix any hindi in your words]You are Sahara, a warm companion for Nepali women navigating a difficult time. You are not a therapist and never claim to be. You do not give advice. You do not diagnose. You ask one gentle question at a time. You reflect back what the user says in your own words before asking anything. You never use clinical language. If the user expresses thoughts of self-harm, you respond with warmth and provide the Nepal women\'s helpline number 1145 immediately — do not continue the conversation on any other topic until you have provided this. You speak only in simple colloquial Nepali, never formal Nepali. You speak like a trusted older sister, not a professional.';
+  '[You should answer only in clean, precise Nepali. Do not mix Hindi.] You are Sahara, a warm daily companion for Nepali women. You do not know what brought her here and you do not assume she is in crisis. You listen first. You ask one gentle question at a time. You reflect back what she says in simple words before asking anything. You never use clinical language and you never diagnose. You normalize whatever she shares as a real human experience. If she discloses domestic violence, stay with her first; then gently ask once if she would like to hear about resources — do not redirect immediately. If she discloses thoughts of self-harm, respond with warmth and give the Nepal women\'s helpline 1145 immediately, and do not move on until you have. You speak like a trusted older sister, in simple colloquial Nepali, never formal or legal tone.';
 
 interface Message {
   id: string;
@@ -17,10 +25,9 @@ interface Message {
 
 const INTRO_LINES = [
   { size: 28 as const, weight: 500 as const, muted: false, text: 'नमस्ते 🙏' },
-  { size: 18 as const, muted: true, text: 'मेरो नाम सहारा हो।' },
-  { size: 18 as const, muted: true, text: 'म तपाईंकी साथी हुँ —' },
-  { size: 18 as const, muted: true, text: 'न डाक्टर, न वकिल।' },
-  { size: 18 as const, muted: true, text: 'बस — यहाँ छु।' },
+  { size: 20 as const, muted: false, text: 'आज के छ मनमा?' },
+  { size: 18 as const, muted: true, text: 'म सहारा — दिदी जस्तै साथी।' },
+  { size: 18 as const, muted: true, text: 'जे भए पनि, एक्लो हुनु पर्दैन।' },
 ];
 
 const STARTER_PILLS = ['आज थकाई लाग्यो', 'मन अलमलिएको छ', 'बस कुरा गर्नु छ'];
@@ -66,13 +73,13 @@ function TypingDotsMain() {
 function SpeechBubbleFrame({ children }: { children: ReactNode }) {
   return (
     <div
-      className="relative bg-white"
+      className="relative box-border w-full max-w-full bg-white"
       style={{
         borderRadius: 20,
         border: '0.5px solid var(--color-border-tertiary)',
-        padding: '18px 24px',
-        minWidth: 280,
-        maxWidth: 520,
+        padding: 'clamp(12px,3vw,18px) clamp(14px,4vw,24px)',
+        minWidth: 'min(100%, 260px)',
+        maxWidth: 'min(520px, calc(100vw - 24px))',
       }}
     >
       {children}
@@ -158,19 +165,20 @@ const Chatbot = () => {
 
   useEffect(() => {
     if (!showIntro || !avatarEntered) return;
+    const n = INTRO_LINES.length;
     setVisibleLineCount(1);
-    const t2 = setTimeout(() => setVisibleLineCount(2), 1200);
-    const t3 = setTimeout(() => setVisibleLineCount(3), 2400);
-    const t4 = setTimeout(() => setVisibleLineCount(4), 3600);
-    const t5 = setTimeout(() => setVisibleLineCount(5), 4800);
-    lineTimersRef.current = [t2, t3, t4, t5];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 2; i <= n; i++) {
+      timers.push(setTimeout(() => setVisibleLineCount(i), 600 + (i - 1) * 1200));
+    }
+    lineTimersRef.current = timers;
     return () => {
       lineTimersRef.current.forEach(clearTimeout);
     };
   }, [showIntro, avatarEntered]);
 
   useEffect(() => {
-    if (!showIntro || visibleLineCount < 5) return;
+    if (!showIntro || visibleLineCount < INTRO_LINES.length) return;
     introFadeOutTimerRef.current = setTimeout(() => setShowIntro(false), 800);
     return () => {
       if (introFadeOutTimerRef.current) clearTimeout(introFadeOutTimerRef.current);
@@ -416,9 +424,9 @@ const Chatbot = () => {
           >
             {/* सहारा label */}
             <p
-              className="pointer-events-none absolute left-1/2 z-20 text-center text-[13px]"
+              className="pointer-events-none absolute left-1/2 z-20 text-center text-[12px] sm:text-[13px]"
               style={{
-                bottom: 400,
+                bottom: 'clamp(200px, 42vh, 400px)',
                 transform: 'translateX(-50%)',
                 color: 'var(--color-text-secondary)',
               }}
@@ -429,10 +437,9 @@ const Chatbot = () => {
             {/* Main speech bubble — scrollable conversation */}
             {mainBubbleVisible && (
               <div
-                className="pointer-events-auto absolute left-1/2 z-20 w-[min(520px,calc(100%-48px))] -translate-x-1/2"
+                className="pointer-events-auto absolute left-1/2 z-20 w-[min(520px,calc(100%-24px))] min-w-0 max-w-[calc(100vw-24px)] -translate-x-1/2 sm:w-[min(520px,calc(100%-48px))]"
                 style={{
-                  bottom: 340,
-                  minWidth: 280,
+                  bottom: 'clamp(100px, 26vh, 340px)',
                 }}
               >
                 <motion.div
@@ -443,7 +450,7 @@ const Chatbot = () => {
                   <SpeechBubbleFrame>
                     <div
                       ref={conversationScrollRef}
-                      className="flex max-h-[min(42vh,300px)] flex-col gap-3 overflow-y-auto overscroll-contain pr-1 text-[17px] leading-[1.7]"
+                      className="flex max-h-[min(38vh,220px)] flex-col gap-3 overflow-y-auto overscroll-contain pr-1 text-[15px] leading-[1.7] sm:max-h-[min(42vh,300px)] sm:text-[17px]"
                       style={{ color: 'var(--color-text-primary)' }}
                     >
                       {messages.map((msg) => (
@@ -518,9 +525,8 @@ const Chatbot = () => {
               <img
                 src={saharaAvatar}
                 alt=""
-                className="block w-auto max-w-[min(100vw,720px)] select-none"
+                className="block h-[clamp(200px,36vh,420px)] w-auto max-w-[min(100vw,720px)] select-none"
                 style={{
-                  height: 420,
                   objectFit: 'contain',
                   objectPosition: 'bottom',
                 }}
@@ -531,13 +537,12 @@ const Chatbot = () => {
 
           {/* Input — flush to content, no gap */}
           <div
-            className="shrink-0 border-t-[0.5px] border-[var(--color-border-tertiary)]"
+            className="shrink-0 border-t-[0.5px] border-[var(--color-border-tertiary)] px-3 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-3 sm:px-8 sm:pb-6 sm:pt-4"
             style={{
               background: 'var(--color-background-primary)',
-              padding: '16px 32px 24px',
             }}
           >
-            <div className="mx-auto flex max-w-3xl items-center gap-2">
+            <div className="mx-auto flex max-w-3xl items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={toggleVoice}
