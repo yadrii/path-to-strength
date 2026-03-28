@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+/** Total spill: expand + shrink back (must match CSS animation duration). */
+const SPILL_TOTAL_MS = 2600;
+
 const COLORS = [
   { value: 'purple',    hex: '#7F77DD' },
   { value: 'amber',     hex: '#EF9F27' },
@@ -50,10 +53,10 @@ const MoodGate = ({ onComplete }: MoodGateProps) => {
     // We also set a specific tracking variable so other components can pick up the mood colour
     root.style.setProperty('--mood-accent', color.hex);
 
-    // After animation duration, trigger completion
+    // After expand + reverse shrink completes
     setTimeout(() => {
       onComplete(color.value);
-    }, 1850); // wait for 1800ms spill + button press animation
+    }, SPILL_TOTAL_MS);
   };
 
   return (
@@ -76,14 +79,19 @@ const MoodGate = ({ onComplete }: MoodGateProps) => {
             animation: none;
           }
 
-          @keyframes spillOut {
+          /* Expand to cover screen, then shrink back the same way (no hold). */
+          @keyframes spillExpandShrink {
             0% {
               transform: translate(-50%, -50%) scale(0);
               opacity: 1;
             }
-            100% {
+            50% {
               transform: translate(-50%, -50%) scale(100);
-              opacity: 0.9;
+              opacity: 0.98;
+            }
+            100% {
+              transform: translate(-50%, -50%) scale(0);
+              opacity: 1;
             }
           }
           
@@ -94,7 +102,8 @@ const MoodGate = ({ onComplete }: MoodGateProps) => {
             border-radius: 50%;
             pointer-events: none;
             z-index: 100;
-            animation: spillOut 1800ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            will-change: transform, opacity;
+            animation: spillExpandShrink ${SPILL_TOTAL_MS}ms cubic-bezier(0.45, 0.05, 0.25, 1) forwards;
           }
         `}
       </style>
@@ -122,8 +131,6 @@ const MoodGate = ({ onComplete }: MoodGateProps) => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: spillCoord ? 0 : 1, // Optional: fade out the whole background as spill happens
-          transition: 'opacity 800ms ease 1000ms',
         }}
       >
         <h1 

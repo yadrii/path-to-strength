@@ -37,7 +37,7 @@ const UserDashboard = () => {
   const handleMoodDone = (moodHex: string) => {
     setSelectedMood(moodHex);
     setMoodDone(true);
-    // Slide in sidebar naturally after the 800ms spill animation
+    // Slide in sidebar shortly after mood spill (expand + shrink) completes
     setTimeout(() => setSidebarOpen(true), 200); 
   };
 
