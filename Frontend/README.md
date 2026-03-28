@@ -1,3 +1,15 @@
-# Welcome to your Lovable project
+    cd path-to-strength
+    cd backend
+    pip install -r requirements.txt
+    cd Backend/uvicorn main:app 
 
-TODO: Document your project here
+    new terminal 
+    cd path-to-strength
+    cd backend
+    python chautara_api.py
+
+    new terminal 
+    cd path-to-strength
+    cd Frontend
+    npm install
+    npm run dev 
