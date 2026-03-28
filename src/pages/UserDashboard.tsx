@@ -9,6 +9,8 @@ import SafetyPlanning from '@/components/dashboard/SafetyPlanning';
 import LegalRights from '@/components/dashboard/LegalRights';
 import TherapistConnect from '@/components/dashboard/TherapistConnect';
 import Chatbot from '@/components/dashboard/Chatbot';
+import SentimentCheckIn, { type SentimentResponse } from '@/components/dashboard/SentimentCheckIn';
+import SentimentDisplay from '@/components/dashboard/SentimentDisplay';
 import { Scale, FileText, Users, Shield, BookOpen, Heart, MessageCircle, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navigate } from 'react-router-dom';
