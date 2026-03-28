@@ -9,6 +9,8 @@ import SafetyPlanning from '@/components/dashboard/SafetyPlanning';
 import LegalRights from '@/components/dashboard/LegalRights';
 import TherapistConnect from '@/components/dashboard/TherapistConnect';
 import Chatbot from '@/components/dashboard/Chatbot';
+import SentimentCheckIn, { type SentimentResponse } from '@/components/dashboard/SentimentCheckIn';
+import SentimentDisplay from '@/components/dashboard/SentimentDisplay';
 import { Scale, FileText, Users, Shield, BookOpen, Heart, MessageCircle, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navigate } from 'react-router-dom';
@@ -28,6 +30,13 @@ const UserDashboard = () => {
   const { isAuthenticated, user } = useAuth();
   const [activeTab, setActiveTab] = useState('case');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showCheckIn, setShowCheckIn] = useState(true);
+  const [sentiment, setSentiment] = useState<SentimentResponse | null>(null);
+
+  const handleCheckInComplete = (responses: SentimentResponse) => {
+    setSentiment(responses);
+    setShowCheckIn(false);
+  };
 
   if (!isAuthenticated || user?.role !== 'user') return <Navigate to="/auth" />;
 
@@ -85,9 +94,12 @@ const UserDashboard = () => {
 
         {/* Main */}
         <main className="flex-1 p-6 md:p-8 max-w-4xl">
+          {sentiment && <SentimentDisplay sentiment={sentiment} />}
           {renderContent()}
         </main>
       </div>
+
+      <SentimentCheckIn open={showCheckIn} onComplete={handleCheckInComplete} />
     </div>
   );
 };
