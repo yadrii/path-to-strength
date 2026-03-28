@@ -9,97 +9,142 @@ import SafetyPlanning from '@/components/dashboard/SafetyPlanning';
 import LegalRights from '@/components/dashboard/LegalRights';
 import TherapistConnect from '@/components/dashboard/TherapistConnect';
 import Chatbot from '@/components/dashboard/Chatbot';
-import SentimentCheckIn, { type SentimentResponse } from '@/components/dashboard/SentimentCheckIn';
-import SentimentDisplay from '@/components/dashboard/SentimentDisplay';
-import { Scale, FileText, Users, Shield, BookOpen, Heart, MessageCircle, Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import MoodGate from '@/components/dashboard/MoodGate';
+import TodayScreen from '@/components/dashboard/TodayScreen';
+import { Scale, FileText, Users, Shield, BookOpen, Heart, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 const navItems = [
-  { key: 'case', icon: Scale, labelEn: 'Case Tracker', labelNe: 'मुद्दा ट्र्याकर' },
-  { key: 'incident', icon: FileText, labelEn: 'Incident Log', labelNe: 'घटना लग' },
-  { key: 'peer', icon: Users, labelEn: 'Peer Connect', labelNe: 'साथी जडान' },
-  { key: 'safety', icon: Shield, labelEn: 'Safety Plan', labelNe: 'सुरक्षा योजना' },
-  { key: 'rights', icon: BookOpen, labelEn: 'Legal Rights', labelNe: 'कानुनी अधिकार' },
-  { key: 'therapist', icon: Heart, labelEn: 'Therapist / NGO', labelNe: 'थेरापिस्ट / एनजीओ' },
-  { key: 'chatbot', icon: MessageCircle, labelEn: 'Sahara Chat', labelNe: 'सहारा च्याट' },
+  { key: 'case',      icon: Scale,          labelEn: 'Case Tracker',    labelNe: 'मुद्दा ट्र्याकर' },
+  { key: 'incident',  icon: FileText,        labelEn: 'Incident Log',    labelNe: 'घटना लग' },
+  { key: 'peer',      icon: Users,           labelEn: 'Peer Connect',    labelNe: 'साथी जडान' },
+  { key: 'safety',    icon: Shield,          labelEn: 'Safety Plan',     labelNe: 'सुरक्षा योजना' },
+  { key: 'rights',    icon: BookOpen,        labelEn: 'Legal Rights',    labelNe: 'कानुनी अधिकार' },
+  { key: 'therapist', icon: Heart,           labelEn: 'Therapist / NGO', labelNe: 'थेरापिस्ट / एनजीओ' },
+  { key: 'chatbot',   icon: MessageCircle,   labelEn: 'Sahara Chat',     labelNe: 'सहारा च्याट' },
 ];
 
 const UserDashboard = () => {
   const { t } = useLanguage();
   const { isAuthenticated, user } = useAuth();
-  const [activeTab, setActiveTab] = useState('case');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showCheckIn, setShowCheckIn] = useState(true);
-  const [sentiment, setSentiment] = useState<SentimentResponse | null>(null);
-
-  const handleCheckInComplete = (responses: SentimentResponse) => {
-    setSentiment(responses);
-    setShowCheckIn(false);
-  };
+  const [activeTab, setActiveTab]       = useState('case');
+  const [sidebarOpen, setSidebarOpen]   = useState(false);
+  const [moodDone, setMoodDone]         = useState(false);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
   if (!isAuthenticated || user?.role !== 'user') return <Navigate to="/auth" />;
 
+  const handleMoodDone = (moodHex: string) => {
+    setSelectedMood(moodHex);
+    setMoodDone(true);
+    // Slide in sidebar naturally after the 800ms spill animation
+    setTimeout(() => setSidebarOpen(true), 200); 
+  };
+
   const renderContent = () => {
     switch (activeTab) {
-      case 'case': return <CaseTracker />;
-      case 'incident': return <IncidentLog />;
-      case 'peer': return <PeerConnect />;
-      case 'safety': return <SafetyPlanning />;
-      case 'rights': return <LegalRights />;
+      case 'case':      return <TodayScreen moodColor={selectedMood ?? 'green'} />;
+      case 'incident':  return <IncidentLog />;
+      case 'peer':      return <PeerConnect />;
+      case 'safety':    return <SafetyPlanning />;
+      case 'rights':    return <LegalRights />;
       case 'therapist': return <TherapistConnect />;
-      case 'chatbot': return <Chatbot />;
-      default: return <CaseTracker />;
+      case 'chatbot':   return <Chatbot />;
+      default:          return <TodayScreen moodColor={selectedMood ?? 'green'} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <div className="flex pt-16">
-        {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-64' : 'w-0 overflow-hidden'} border-r bg-card transition-all duration-300 min-h-[calc(100vh-4rem)] shrink-0`}>
-          <div className="p-4 space-y-1">
-            <div className="px-3 py-2 mb-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-                {t('Your Journey', 'तपाईंको यात्रा')}
-              </p>
-            </div>
+    <div className="min-h-screen bg-background" style={{ transition: 'background-color 800ms ease' }}>
+      {!moodDone && <MoodGate onComplete={handleMoodDone} />}
+
+      {/* Navbar fades in after mood selection */}
+      <div style={{ opacity: moodDone ? 1 : 0, transition: 'opacity 800ms ease', pointerEvents: moodDone ? 'auto' : 'none' }}>
+        <Navbar />
+      </div>
+
+      {/* Body */}
+      <div
+        className="flex"
+        style={{
+          paddingTop: '4rem',
+          height: '100vh',
+          opacity: moodDone ? 1 : 0,
+          transition: 'opacity 800ms ease 100ms',
+        }}
+      >
+        {/* ── Sidebar slides in after color transition ── */}
+        <aside
+          style={{
+            width: sidebarOpen ? '15rem' : '0',
+            minWidth: sidebarOpen ? '15rem' : '0',
+            transition: 'width 600ms cubic-bezier(0.4,0,0.2,1), min-width 600ms cubic-bezier(0.4,0,0.2,1)',
+            overflow: 'hidden',
+            borderRight: '1px solid var(--border)',
+            background: 'var(--card)',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ width: '15rem', padding: '1.25rem 0.75rem', flex: 1 }}>
+            <p style={{
+              fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase',
+              color: '#8c7b6c', fontWeight: 600, padding: '0 1rem', marginBottom: '1.25rem',
+              fontFamily: 'DM Sans, sans-serif'
+            }}>
+              YOUR JOURNEY
+            </p>
             {navItems.map((item) => (
               <button
                 key={item.key}
                 onClick={() => setActiveTab(item.key)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  activeTab === item.key
-                    ? 'bg-sage-light text-primary font-medium'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '0.875rem',
+                  padding: '0.75rem 1rem', borderRadius: '0.75rem', border: 'none',
+                  cursor: 'pointer', marginBottom: '0.25rem',
+                  background: activeTab === item.key ? 'var(--primary-transparent, #ebf5ee)' : 'transparent',
+                  transition: 'background 200ms', textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
+                }}
+                onMouseEnter={e => { if (activeTab !== item.key) e.currentTarget.style.background = 'hsl(var(--muted))'; }}
+                onMouseLeave={e => { if (activeTab !== item.key) e.currentTarget.style.background = 'transparent'; }}
               >
-                <item.icon className="h-4 w-4 shrink-0" />
-                {t(item.labelEn, item.labelNe)}
+                <item.icon size={18} color={activeTab === item.key ? 'var(--mood-accent, #1D9E75)' : '#8c7b6c'} style={{ flexShrink: 0 }} />
+                <span style={{ 
+                  display: 'block', fontSize: 14, 
+                  fontWeight: activeTab === item.key ? 500 : 400, 
+                  color: activeTab === item.key ? 'var(--mood-accent, #1D9E75)' : '#5a4e47' 
+                }}>
+                  {t(item.labelEn, item.labelNe)}
+                </span>
               </button>
             ))}
           </div>
         </aside>
 
-        {/* Toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="fixed left-2 top-20 z-40 md:relative md:left-0 md:top-0 md:mt-4 md:ml-2"
-        >
-          {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </Button>
+        {/* ── Sidebar toggle ── */}
+        {moodDone && (
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{
+              position: 'absolute', left: sidebarOpen ? '15rem' : '0', top: '50%', transform: 'translateY(-50%)',
+              zIndex: 50, width: 20, height: 48, borderRadius: '0 8px 8px 0', border: '1px solid var(--border)',
+              borderLeft: 'none', background: 'var(--card)', cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', transition: 'left 600ms cubic-bezier(0.4,0,0.2,1)',
+              flexShrink: 0,
+            }}
+          >
+            {sidebarOpen ? <ChevronLeft size={12} color="hsl(var(--muted-foreground))" /> : <ChevronRight size={12} color="hsl(var(--muted-foreground))" />}
+          </button>
+        )}
 
-        {/* Main */}
-        <main className="flex-1 p-6 md:p-8 max-w-4xl">
-          {sentiment && <SentimentDisplay sentiment={sentiment} />}
+        {/* ── Main content ── */}
+        <main style={{ flex: 1, overflowY: 'auto', height: '100%', padding: '2rem' }}>
           {renderContent()}
         </main>
       </div>
-
-      <SentimentCheckIn open={showCheckIn} onComplete={handleCheckInComplete} />
     </div>
   );
 };
