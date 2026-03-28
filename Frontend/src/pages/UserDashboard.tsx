@@ -141,7 +141,18 @@ const UserDashboard = () => {
         )}
 
         {/* ── Main content ── */}
-        <main style={{ flex: 1, overflowY: 'auto', height: '100%', padding: '2rem' }}>
+        <main
+          style={{
+            flex: 1,
+            overflowY: activeTab === 'chatbot' ? 'hidden' : 'auto',
+            overflowX: 'hidden',
+            height: '100%',
+            padding: activeTab === 'chatbot' ? 0 : '2rem',
+            display: activeTab === 'chatbot' ? 'flex' : 'block',
+            flexDirection: 'column',
+            minHeight: 0,
+          }}
+        >
           {renderContent()}
         </main>
       </div>

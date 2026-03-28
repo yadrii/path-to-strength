@@ -2,6 +2,7 @@ fastapi
 uvicorn
 python-multipart
 httpx
+groq
 pydantic
 python-dotenv
 sentence-transformers

@@ -55,6 +55,14 @@
     --rose-soft: 350 40% 88%;
     --gold-warm: 38 60% 70%;
 
+    /* Sahara chat tokens */
+    --color-background-primary: hsl(var(--background));
+    --color-background-secondary: hsl(var(--muted));
+    --color-border-secondary: hsl(var(--border));
+    --color-border-tertiary: hsl(36 20% 88%);
+    --color-text-secondary: hsl(var(--muted-foreground));
+    --color-text-primary: hsl(var(--foreground));
+
     --gradient-hero: linear-gradient(135deg, hsl(150 20% 92%), hsl(36 33% 97%), hsl(16 40% 90%));
     --gradient-card: linear-gradient(145deg, hsl(36 30% 95%), hsl(150 20% 95%));
     --shadow-soft: 0 4px 20px -4px hsl(20 20% 20% / 0.08);

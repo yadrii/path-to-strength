@@ -45,7 +45,7 @@ class InteractionRequest(BaseModel):
 
 # --- DATABASE & GROQ SETUP ---
 CHAUTARA_DB = "chautari_sanctuary.json"
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+client = Groq(api_key=os.environ.get("VITE_GROQ_API_KEY"))
 
 def get_db():
     if not os.path.exists(CHAUTARA_DB):
