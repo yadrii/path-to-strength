@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import PrivateRoute from "@/components/PrivateRoute";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import UserDashboard from "./pages/UserDashboard";
@@ -24,8 +25,22 @@ const App = () => (
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/auth" element={<AuthPage />} />
-              <Route path="/dashboard" element={<UserDashboard />} />
-              <Route path="/ngo-dashboard" element={<NgoDashboard />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <PrivateRoute requiredRole="user">
+                    <UserDashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/ngo-dashboard"
+                element={
+                  <PrivateRoute requiredRole="ngo">
+                    <NgoDashboard />
+                  </PrivateRoute>
+                }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

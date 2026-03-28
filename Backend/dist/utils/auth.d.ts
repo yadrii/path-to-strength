@@ -1,0 +1,9 @@
+export declare const hashPassword: (password: string) => Promise<string>;
+export declare const comparePasswords: (password: string, hashedPassword: string) => Promise<boolean>;
+export declare const generateAccessToken: (userId: string, role: string) => string;
+export declare const generateRefreshToken: (userId: string) => string;
+export declare const verifyAccessToken: (token: string) => any;
+export declare const verifyRefreshToken: (token: string) => any;
+export declare const generateVerificationToken: () => string;
+export declare const generatePasswordResetToken: () => string;
+//# sourceMappingURL=auth.d.ts.map

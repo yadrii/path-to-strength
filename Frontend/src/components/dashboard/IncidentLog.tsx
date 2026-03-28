@@ -1,10 +1,13 @@
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Heart } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { apiClient } from '@/services/apiClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface Incident {
   id: string;
@@ -12,26 +15,112 @@ interface Incident {
   type: string;
   description: string;
   supportMessage: string;
+  userName: string;
+  isAnonymous: boolean;
+  status: 'pending' | 'in_progress' | 'resolved';
+  createdAt: string;
 }
 
-const IncidentLog = () => {
+interface IncidentLogProps {
+  filter?: 'all' | 'anonymous' | 'registered';
+}
+
+const IncidentLog: React.FC<IncidentLogProps> = ({ filter = 'all' }) => {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [incidentType, setIncidentType] = useState('');
   const [description, setDescription] = useState('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [incidents] = useState<Incident[]>([
-    {
-      id: '1', date: '2024-06-10', type: 'court_delay',
-      description: t('Hearing postponed again. Judge was absent.', 'सुनुवाइ फेरि स्थगित। न्यायाधीश अनुपस्थित।'),
-      supportMessage: t('Court delays are exhausting. Your patience is strength, not weakness.', 'अदालतको ढिलाइ थकित हुन्छ। तपाईंको धैर्य शक्ति हो, कमजोरी होइन।'),
-    },
-    {
-      id: '2', date: '2024-05-02', type: 'police_dismissal',
-      description: t('Officer said to "go home and sort it out"', 'अधिकारीले "घर जाऊ र मिलाऊ" भने'),
-      supportMessage: t('Being dismissed by those meant to protect you is deeply painful. Your experience is valid. This is documented.', 'तपाईंलाई सुरक्षा दिनुपर्नेहरूले अस्वीकार गर्नु गहिरो पीडादायक छ। तपाईंको अनुभव मान्य छ।'),
-    },
-  ]);
+  useEffect(() => {
+    fetchIncidents();
+  }, []);
+
+  const fetchIncidents = async () => {
+    try {
+      const response = await apiClient.getIncidents();
+      if (response.success) {
+        setIncidents(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch incidents:', error);
+      toast({
+        title: t('Error', 'त्रुटि'),
+        description: t('Failed to load incidents', 'घटनाहरू लोड गर्न असफल'),
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!incidentType || !description.trim()) {
+      toast({
+        title: t('Error', 'त्रुटि'),
+        description: t('Please fill in all fields', 'सबै क्षेत्रहरू भर्नुहोस्'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await apiClient.createIncident({
+        type: incidentType,
+        description: description.trim(),
+        isAnonymous,
+      });
+
+      if (response.success) {
+        setIncidents(prev => [response.data, ...prev]);
+        setIncidentType('');
+        setDescription('');
+        setIsAnonymous(false);
+        setShowForm(false);
+        toast({
+          title: t('Success', 'सफलता'),
+          description: t('Incident logged successfully', 'घटना सफलतापूर्वक दर्ता गरियो'),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create incident:', error);
+      toast({
+        title: t('Error', 'त्रुटि'),
+        description: t('Failed to log incident', 'घटना दर्ता गर्न असफल'),
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleStatusChange = async (incidentId: string, newStatus: 'pending' | 'in_progress' | 'resolved') => {
+    try {
+      const response = await apiClient.updateIncidentStatus(incidentId, newStatus);
+      if (response.success) {
+        setIncidents((prev) => prev.map((incident) =>
+          incident.id === incidentId ? { ...incident, status: response.data.status } : incident
+        ));
+        toast({
+          title: t('Success', 'सफलता'),
+          description: t('Incident status updated', 'घटनाको स्थिति अद्यावधिक गरियो'),
+        });
+      }
+    } catch (err) {
+      console.error('Failed to update incident status:', err);
+      toast({
+        title: t('Error', 'त्रुटि'),
+        description: t('Failed to update status', 'स्थिति अद्यावधिक गर्न असफल'),
+        variant: 'destructive',
+      });
+    }
+  };
 
   const supportMessages: Record<string, string> = {
     court_delay: t('Another delay. Your frustration is valid. This is documented and it matters.', 'अर्को ढिलाइ। तपाईंको निराशा मान्य छ।'),
@@ -39,6 +128,19 @@ const IncidentLog = () => {
     threat: t('Your safety comes first. Consider reaching out to the safety planning module.', 'तपाईंको सुरक्षा पहिलो हो। सुरक्षा योजना मोड्युलमा सम्पर्क गर्नुहोस्।'),
     other: t('Whatever you are feeling right now is valid. You are not alone.', 'तपाईंले अहिले जे महसुस गरिरहनु भएको छ त्यो मान्य छ।'),
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-display font-bold text-foreground">{t('Incident Log', 'घटना लग')}</h2>
+            <p className="text-muted-foreground text-sm">{t('Loading incidents...', 'घटनाहरू लोड हुँदैछ...')}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -65,7 +167,12 @@ const IncidentLog = () => {
                 <SelectItem value="other">{t('Other', 'अन्य')}</SelectItem>
               </SelectContent>
             </Select>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('Describe what happened in your own words...', 'आफ्नै शब्दमा वर्णन गर्नुहोस्...')} rows={4} />
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t('Describe what happened in your own words...', 'आफ्नै शब्दमा वर्णन गर्नुहोस्...')}
+              rows={4}
+            />
             {incidentType && (
               <div className="p-4 rounded-lg bg-sage-light border border-primary/20">
                 <div className="flex gap-2 items-start">
@@ -74,28 +181,78 @@ const IncidentLog = () => {
                 </div>
               </div>
             )}
-            <Button className="btn-hero text-sm">{t('Save', 'सुरक्षित गर्नुहोस्')}</Button>
+            <div className="flex items-center gap-2">
+              <input
+                id="anonymous"
+                type="checkbox"
+                checked={isAnonymous}
+                onChange={(e) => setIsAnonymous(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <label htmlFor="anonymous" className="text-sm text-foreground">
+                {t('Submit anonymously', 'अनामतामा पठाउनुहोस्')}
+              </label>
+            </div>
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="btn-hero text-sm"
+            >
+              {submitting ? t('Saving...', 'सुरक्षित गर्दै...') : t('Save', 'सुरक्षित गर्नुहोस्')}
+            </Button>
           </CardContent>
         </Card>
       )}
 
       <div className="space-y-4">
-        {incidents.map((inc) => (
-          <Card key={inc.id} className="border-border/50">
+        {(() => {
+          const filteredIncidents = incidents.filter(incident => {
+            if (filter === 'anonymous') return incident.isAnonymous;
+            if (filter === 'registered') return !incident.isAnonymous;
+            return true;
+          });
+          return filteredIncidents.map((incident) => (
+          <Card key={incident.id} className="border-border/50">
             <CardContent className="p-4">
               <div className="flex justify-between items-start mb-2">
-                <p className="font-medium text-foreground">{inc.description}</p>
-                <span className="text-xs text-muted-foreground shrink-0">{inc.date}</span>
+                <div>
+                  <p className="font-medium text-foreground">{incident.description}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {incident.isAnonymous ? t('Raised anonymously', 'अनामिक रूपमा दर्ता गरियो') : `${t('Raised by', 'दर्ता गरेको')} ${incident.userName}`}
+                  </p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground shrink-0">
+                  <div>{incident.date}</div>
+                  <div className="text-primary font-medium">{incident.status.replace('_', ' ')}</div>
+                </div>
               </div>
+
+              {user?.role === 'ngo' && (
+                <div className="mb-2">
+                  <label className="text-xs text-muted-foreground mr-2">{t('Update status', 'स्थिति अद्यावधिक')}</label>
+                  <select
+                    value={incident.status}
+                    onChange={(e) => handleStatusChange(incident.id, e.target.value as 'pending' | 'in_progress' | 'resolved')}
+                    className="text-xs border rounded px-2 py-1"
+                  >
+                    <option value="pending">{t('Pending', 'प्रतीक्षारत')}</option>
+                    <option value="in_progress">{t('In Progress', 'प्रगतिको क्रममा')}</option>
+                    <option value="resolved">{t('Resolved', 'समाधान')}</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Support Message */}
               <div className="p-3 rounded-lg bg-sage-light border border-primary/10 mt-2">
                 <div className="flex gap-2 items-start">
                   <Heart className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <p className="text-sm text-foreground/80 italic">{inc.supportMessage}</p>
+                  <p className="text-sm text-foreground/80 italic">{incident.supportMessage}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-        ))}
+        ));
+        })()}
       </div>
     </div>
   );
