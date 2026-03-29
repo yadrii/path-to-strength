@@ -1,119 +1,186 @@
+import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, ExternalLink } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { BookOpen } from 'lucide-react';
 
 const LegalRights = () => {
   const { t } = useLanguage();
 
+  const [open, setOpen] = useState(false);
+  const [selectedRight, setSelectedRight] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+
+  // ✅ RIGHTS
   const rights = [
     {
       title: t('Right to Mental Healthcare', 'मानसिक स्वास्थ्य सेवाको अधिकार'),
-      desc: t(
-        'Every citizen has the right to access basic mental health services under Nepal’s National Mental Health Policy. Public hospitals are required to provide mental health support.',
-        'नेपालको राष्ट्रिय मानसिक स्वास्थ्य नीतिअन्तर्गत प्रत्येक नागरिकलाई आधारभूत मानसिक स्वास्थ्य सेवा पाउने अधिकार छ। सरकारी अस्पतालहरूले मानसिक स्वास्थ्य सेवा उपलब्ध गराउनुपर्छ।'
-      ),
+      desc: t('Access mental health services in Nepal.', 'नेपालमा मानसिक स्वास्थ्य सेवा पाउने अधिकार।'),
+      law: 'National Mental Health Policy 1996 & Constitution (Article 35)',
+      context: 'mental_health_access',
     },
     {
-      title: t('Right to Dignity and Non-Discrimination', 'गरिमा र भेदभावरहित व्यवहारको अधिकार'),
-      desc: t(
-        'The Constitution of Nepal guarantees dignity and equality. Individuals with mental health conditions must not face discrimination in healthcare, education, or employment.',
-        'नेपालको संविधानले गरिमा र समानताको अधिकार सुनिश्चित गर्दछ। मानसिक स्वास्थ्य समस्या भएका व्यक्तिहरूले स्वास्थ्य, शिक्षा वा रोजगारीमा भेदभाव सहनु हुँदैन।'
-      ),
+      title: t('Right to Dignity & Equality', 'गरिमा र समानताको अधिकार'),
+      desc: t('No discrimination based on mental health.', 'मानसिक स्वास्थ्यका आधारमा भेदभाव हुँदैन।'),
+      law: 'Constitution of Nepal (Article 18)',
+      context: 'mental_health_dignity',
     },
     {
       title: t('Right to Confidentiality', 'गोपनीयताको अधिकार'),
-      desc: t(
-        'Your mental health condition and treatment details must be kept confidential by healthcare providers unless disclosure is required by law.',
-        'तपाईंको मानसिक स्वास्थ्य अवस्था र उपचारसम्बन्धी विवरण स्वास्थ्य सेवा प्रदायकले गोप्य राख्नुपर्छ, कानुनले आवश्यक ठानेमा बाहेक।'
-      ),
+      desc: t('Your mental health data must remain private.', 'तपाईंको मानसिक स्वास्थ्य जानकारी गोप्य हुन्छ।'),
+      law: 'Public Health Service Act 2018',
+      context: 'mental_health_privacy',
     },
     {
-      title: t('Right to Informed Consent', 'जानकारीसहितको सहमतिको अधिकार'),
-      desc: t(
-        'You have the right to understand your diagnosis and treatment options before giving consent. Treatment should not be forced unless in extreme cases defined by law.',
-        'तपाईंलाई आफ्नो रोग र उपचार विकल्पबारे बुझेर मात्र सहमति दिन पाउने अधिकार छ। कानुनले परिभाषित गरेको अत्यन्त अवस्थाबाहेक जबर्जस्ती उपचार गर्नु हुँदैन।'
-      ),
+      title: t('File Domestic Violence Complaint', 'घरेलु हिंसा उजुरी'),
+      desc: t('Report abuse at any police station.', 'प्रहरीमा उजुरी दिन सकिन्छ।'),
+      law: 'Domestic Violence Act 2066',
+      context: 'dv_report',
     },
     {
-      title: t('Right to Community-Based Care', 'समुदायमा आधारित हेरचाहको अधिकार'),
-      desc: t(
-        'Nepal promotes community-based mental healthcare, allowing individuals to receive support within their communities instead of institutional isolation.',
-        'नेपालले समुदायमा आधारित मानसिक स्वास्थ्य सेवामा जोड दिन्छ, जसले व्यक्तिलाई संस्थागत अलगावको सट्टा आफ्नै समुदायमा सहयोग पाउन मद्दत गर्दछ।'
-      ),
+      title: t('Protection Order', 'सुरक्षा आदेश'),
+      desc: t('Court protection from abuser.', 'अदालतले सुरक्षा दिन सक्छ।'),
+      law: 'Domestic Violence Act 2066 (Sec 6 & 7)',
+      context: 'dv_protection',
     },
     {
-      title: t('Right to Emergency Mental Health Support', 'आपतकालीन मानसिक स्वास्थ्य सहयोगको अधिकार'),
-      desc: t(
-        'In crisis situations, individuals have the right to immediate care and support from hospitals and emergency services.',
-        'आपतकालीन अवस्थामा व्यक्तिले तुरुन्त स्वास्थ्य सेवा र सहयोग पाउने अधिकार राख्दछ।'
-      ),
+      title: t('Free Legal Aid', 'निःशुल्क कानुनी सहायता'),
+      desc: t('Free lawyer support if needed.', 'निःशुल्क वकिल पाइन्छ।'),
+      law: 'Legal Aid Act 2054',
+      context: 'legal_aid',
     },
   ];
 
+  // 🔥 API CALL (FIXED)
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userMsg = { role: 'user', text: input };
+    setMessages((prev) => [...prev, userMsg]);
+
+    try {
+      const res = await fetch('http://localhost:8000/api/legal-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: input }),
+      });
+
+      const data = await res.json();
+
+      const botMsg = {
+        role: 'bot',
+        text: data.reply || 'No response from server',
+      };
+
+      setMessages((prev) => [...prev, botMsg]);
+    } catch (err) {
+      // 🔴 OFFLINE / ERROR FALLBACK
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'bot',
+          text: '⚠️ Unable to reach server. Please check backend or internet.',
+        },
+      ]);
+    }
+
+    setInput('');
+  };
+
+  // 🔹 CARD CLICK
+  const handleCardClick = (right) => {
+    setSelectedRight(right);
+    setMessages([
+      {
+        role: 'bot',
+        text: `You selected "${right.title}". (${right.law})\nAsk anything related to this right.`,
+      },
+    ]);
+    setOpen(true);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* HEADER */}
       <div>
-        <h2 className="text-2xl font-display font-bold text-foreground">
-          {t('Know Your Mental Health Rights', 'आफ्ना मानसिक स्वास्थ्य अधिकार जान्नुहोस्')}
+        <h2 className="text-2xl font-bold">
+          {t('Know Your Legal Rights', 'आफ्ना कानुनी अधिकार जान्नुहोस्')}
         </h2>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           {t(
-            'Clear, simple information based on Nepal’s policies and constitutional rights.',
-            'नेपालको नीति र संवैधानिक अधिकारमा आधारित सरल जानकारी।'
+            'Mental health and domestic violence rights in Nepal.',
+            'नेपालमा मानसिक स्वास्थ्य र घरेलु हिंसा सम्बन्धी अधिकार।'
           )}
         </p>
       </div>
 
-      {/* Rights Cards */}
+      {/* CARDS */}
       <div className="space-y-4">
         {rights.map((right, i) => (
           <Card
             key={i}
-            className="border-border/50 hover:shadow-md transition-shadow"
+            onClick={() => handleCardClick(right)}
+            className="cursor-pointer hover:shadow-md transition"
           >
-            <CardContent className="p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-sage-light flex items-center justify-center shrink-0 mt-0.5">
-                  <BookOpen className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground mb-1">
-                    {right.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {right.desc}
-                  </p>
-                </div>
+            <CardContent className="p-5 flex gap-3">
+              <BookOpen className="h-5 w-5 text-primary" />
+              <div>
+                <h3 className="font-semibold">{right.title}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {right.desc}
+                </p>
+
+                <p className="text-xs text-primary mt-2 font-medium">
+                  {t('Legal Basis:', 'कानुनी आधार:')} {right.law}
+                </p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Helpline CTA */}
-      <div className="pt-2">
-        <Button
-          variant="outline"
-          className="w-full flex items-center justify-center"
-          onClick={() => window.open('https://www.tponepal.org', '_blank')}
-        >
-          {t(
-            'Contact Mental Health Support',
-            'मानसिक स्वास्थ्य सहयोग सम्पर्क गर्नुहोस्'
-          )}
-          <ExternalLink className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
+      {/* CHAT MODAL */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedRight?.title}</DialogTitle>
+          </DialogHeader>
 
-      {/* Disclaimer */}
-      <p className="text-xs text-muted-foreground text-center pt-2">
-        {t(
-          'This information is for awareness and does not replace professional legal advice.',
-          'यो जानकारी केवल सचेतनाका लागि हो र पेशेवर कानुनी सल्लाहको विकल्प होइन।'
-        )}
-      </p>
+          {/* CHAT */}
+          <div className="h-64 overflow-y-auto space-y-2 border p-3 rounded">
+            {messages.map((msg, i) => (
+              <div
+                key={i}
+                className={`text-sm ${
+                  msg.role === 'user'
+                    ? 'text-right text-blue-600'
+                    : 'text-left text-gray-700'
+                }`}
+              >
+                {msg.text}
+              </div>
+            ))}
+          </div>
+
+          {/* INPUT */}
+          <div className="flex gap-2 mt-2">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask your question..."
+            />
+            <Button onClick={handleSend}>Send</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

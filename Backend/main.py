@@ -186,6 +186,95 @@ async def light_diya():
     save_db(db)
     return {"status": "Diya lit"}
 
+# ===== AI LEGAL ASSISTANT ROUTE (ADD BELOW YOUR EXISTING CODE) =====
+
+# ===== AI LEGAL ASSISTANT ROUTE (FIXED) =====
+
+from pydantic import BaseModel
+import os, json
+from dotenv import load_dotenv
+from groq import Groq
+
+# ✅ IMPORTANT CHANGE HERE
+from rag import load_pdfs, build_db, handle_query
+
+load_dotenv()
+
+# 🔹 Init once
+try:
+    load_pdfs()
+    build_db()
+except:
+    pass
+
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+# 🔹 Load offline fallback
+with open("local_data.json") as f:
+    local_data = json.load(f)
+
+class ChatRequest(BaseModel):
+    query: str
+
+def search_local(query):
+    for key in local_data:
+        if key in query.lower():
+            return local_data[key]
+    return "Hi! I'm here to help you understand your Right to Mental Healthcare. You can ask things like: What does this right include? Who can access mental healthcare? What are my legal protections?"
+
+@app.post("/api/legal-chat")
+async def legal_chat(req: ChatRequest):
+    query = req.query
+
+    try:
+        # ✅ USE NEW RAG PIPELINE
+        result = handle_query(query)
+
+        # ✅ If RAG found documents → enhance with LLM
+        if result["sources"]:
+            context = result["answer"]
+
+            prompt = f"""
+You are a Nepal Legal AI Assistant.
+
+STRICT RULES:
+- Always mention ACT name
+- Mention SECTION number if available
+- Give step-by-step actions
+- If crime involved → explain FIR process
+- If user asks → generate FIR format
+
+Context:
+{context}
+
+User Query:
+{query}
+"""
+
+            response = client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            return {
+                "reply": response.choices[0].message.content,
+                "sources": result["sources"]
+            }
+
+        # ✅ If NO docs → proper fallback (FIXED)
+        else:
+            return {
+                "reply": result["answer"],
+                "sources": [],
+                "offline": True
+            }
+
+    except Exception as e:
+        print("ERROR:", e)
+        return {
+            "reply": search_local(query),
+            "offline": True
+        }
 
 # --- INCLUDE ORIGINAL ROUTERS ---
 app.include_router(stt_router, prefix="/stt", tags=["Speech To Text"])
