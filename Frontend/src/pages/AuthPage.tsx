@@ -106,8 +106,8 @@ const AuthPage = () => {
                       'जहाँ छोड्नुभएको थियो त्यहीँबाट — तपाईंको यात्रा अझै यहाँ छ।',
                     )
                   : t(
-                      'One account for case tracking, peer support, and Sangai chat — at your pace.',
-                      'मुद्दा ट्र्याक, साथी सहयोग र सङ्गै च्याट — तपाईंको गतिमा।',
+                      'One account for case tracking, peer support, and Sahara chat — at your pace.',
+                      'मुद्दा ट्र्याक, साथी सहयोग र सहारा च्याट — तपाईंको गतिमा।',
                     )}
               </p>
 
