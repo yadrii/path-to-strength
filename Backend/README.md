@@ -40,4 +40,4 @@ python main.py
 
 ## Auth database
 
-Users are stored in `Backend/sahara_users.db` (SQLite), created on first run.
+Users are stored in `Backend/sangai_users.db` (SQLite), created on first run. If you have an older `sahara_users.db` file from a previous name, rename it to `sangai_users.db` to keep existing accounts.

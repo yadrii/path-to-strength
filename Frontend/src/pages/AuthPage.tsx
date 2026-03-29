@@ -91,7 +91,7 @@ const AuthPage = () => {
 
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-sage-light/90 px-4 py-2 text-sm font-medium text-sage-dark shadow-sm backdrop-blur-sm">
                 <Heart className="h-4 w-4 text-primary" />
-                {t('Sahara', 'सहारा')}
+                {t('Sangai', 'सङ्गै')}
               </div>
 
               <h1 className="font-display text-3xl font-bold leading-tight text-foreground md:text-4xl text-balance">
@@ -106,8 +106,8 @@ const AuthPage = () => {
                       'जहाँ छोड्नुभएको थियो त्यहीँबाट — तपाईंको यात्रा अझै यहाँ छ।',
                     )
                   : t(
-                      'One account for case tracking, peer support, and Sahara chat — at your pace.',
-                      'मुद्दा ट्र्याक, साथी सहयोग र सहारा च्याट — तपाईंको गतिमा।',
+                      'One account for case tracking, peer support, and Sangai chat — at your pace.',
+                      'मुद्दा ट्र्याक, साथी सहयोग र सङ्गै च्याट — तपाईंको गतिमा।',
                     )}
               </p>
 

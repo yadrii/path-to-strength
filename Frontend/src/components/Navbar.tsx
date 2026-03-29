@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Heart, LayoutDashboard, LogOut, Mail, MapPin, Shield, User } from 'lucide-react';
+import { LayoutDashboard, LogOut, Mail, MapPin, Shield, User } from 'lucide-react';
+import sangaiLogo from '@/assets/sangai-logo.png';
 
 const Navbar = () => {
   const { t } = useLanguage();
@@ -21,9 +22,9 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/60 bg-background/85 pt-[env(safe-area-inset-top,0px)] shadow-sm backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
         <Link to="/" className="flex items-center gap-2">
-          <Heart className="h-6 w-6 text-primary fill-primary/20" />
+          <img src={sangaiLogo} alt="" className="h-[28px] w-auto max-w-[120px] object-contain" />
           <span className="text-xl font-display font-semibold text-foreground">
-            {t('Sahara', 'सहारा')}
+            {t('Sangai', 'सङ्गै')}
           </span>
         </Link>
 
