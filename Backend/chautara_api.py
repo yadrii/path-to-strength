@@ -1,3 +1,9 @@
+"""
+Peer Connect (Chautara) — feed, post, comment, RAG reflections.
+
+Mounted on the main app at prefix /api/chautara (see main.py).
+Run everything with: uvicorn main:app --reload --host 127.0.0.1 --port 5000
+"""
 import os
 import sqlite3
 import time
@@ -6,8 +12,7 @@ import asyncio
 import re
 import json
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from groq import Groq
 from dotenv import load_dotenv
@@ -17,15 +22,8 @@ from chautara_db import DB_PATH, init_chautara_sanctuary_db, seed_chautara_stori
 
 # ---------- INIT ----------
 load_dotenv()
-app = FastAPI(title="Chautara RAG Sanctuary")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter(tags=["chautara"])
 
 _groq_client = None
 
@@ -60,7 +58,7 @@ class CommentReq(BaseModel):
 
 # ---------- FILTER ----------
 def normalize(text):
-    return re.sub(r'[^a-z0-9\u0900-\u097F\s]', '', text.lower())
+    return re.sub(r"[^a-z0-9\u0900-\u097F\s]", "", text.lower())
 
 
 def contains_hate(text):
@@ -78,12 +76,12 @@ def classify(text):
         res = groq.chat.completions.create(
             messages=[
                 {"role": "system", "content": "Return POSITIVE or NEGATIVE"},
-                {"role": "user", "content": text}
+                {"role": "user", "content": text},
             ],
-            model="llama-3.3-70b-versatile"
+            model="llama-3.3-70b-versatile",
         )
         return res.choices[0].message.content.strip().upper()
-    except:
+    except Exception:
         return "NEGATIVE"
 
 
@@ -103,7 +101,7 @@ def get_similar_context(user_text):
     query = embedder.encode(user_text, convert_to_tensor=True)
 
     hits = util.semantic_search(query, corpus, top_k=5)
-    similar = [stories[h['corpus_id']] for h in hits[0]]
+    similar = [stories[h["corpus_id"]] for h in hits[0]]
     similar = list(dict.fromkeys(similar))[:3]
 
     return "\n".join(similar)
@@ -139,7 +137,7 @@ Example:
         completion = groq.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile",
-            temperature=0.7
+            temperature=0.7,
         )
 
         output = completion.choices[0].message.content
@@ -147,14 +145,14 @@ Example:
 
         try:
             parts = json.loads(output)
-        except:
+        except Exception:
             parts = []
 
         if len(parts) != 3:
             parts = [
                 f"I went through something similar to '{user_text}', it was overwhelming.",
                 "I remember feeling emotionally drained in that situation too.",
-                "It took time, but I slowly found ways to cope."
+                "It took time, but I slowly found ways to cope.",
             ]
 
         conn = sqlite3.connect(DB_PATH)
@@ -163,7 +161,7 @@ Example:
         for content in parts:
             cursor.execute(
                 "INSERT INTO comments VALUES (?, ?, ?, ?)",
-                (os.urandom(3).hex(), story_id, content, f"Sister #{random.randint(100,999)}")
+                (os.urandom(3).hex(), story_id, content, f"Sister #{random.randint(100, 999)}"),
             )
 
         conn.commit()
@@ -173,8 +171,8 @@ Example:
         print("❌ RAG ERROR:", e)
 
 
-# ---------- ROUTES ----------
-@app.get("/api/chautara/feed")
+# ---------- ROUTES (paths relative to include_router prefix) ----------
+@router.get("/feed")
 async def get_feed():
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -185,7 +183,10 @@ async def get_feed():
         stories = [dict(row) for row in cursor.fetchall()]
 
         for s in stories:
-            cursor.execute("SELECT content, author FROM comments WHERE story_id=?", (s["id"],))
+            cursor.execute(
+                "SELECT content, author FROM comments WHERE story_id=?",
+                (s["id"],),
+            )
             s["replies"] = [dict(row) for row in cursor.fetchall()]
 
         conn.close()
@@ -196,7 +197,7 @@ async def get_feed():
         return []
 
 
-@app.post("/api/chautara/post")
+@router.post("/post")
 async def post_story(req: PostReq):
     try:
         sid = os.urandom(4).hex()
@@ -224,9 +225,8 @@ async def post_story(req: PostReq):
         raise HTTPException(500, "Failed to post")
 
 
-@app.post("/api/chautara/comment")
+@router.post("/comment")
 async def add_comment(req: CommentReq):
-
     if not req.content.strip():
         raise HTTPException(400, "Empty")
 
@@ -241,7 +241,7 @@ async def add_comment(req: CommentReq):
 
     cursor.execute(
         "INSERT INTO comments VALUES (?, ?, ?, ?)",
-        (os.urandom(3).hex(), req.story_id, req.content, "Sister (Peer)")
+        (os.urandom(3).hex(), req.story_id, req.content, "Sister (Peer)"),
     )
 
     conn.commit()
@@ -250,7 +250,20 @@ async def add_comment(req: CommentReq):
     return {"ok": True}
 
 
-# ---------- RUN ----------
+# Optional: run Peer Connect alone on port 5001 (same routes as main app)
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=5001)
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+
+    _app = FastAPI(title="Chautara (standalone)")
+    _app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    _app.include_router(router, prefix="/api/chautara")
+    port = int(os.environ.get("PORT", "5001"))
+    uvicorn.run(_app, host="127.0.0.1", port=port)

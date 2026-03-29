@@ -137,14 +137,11 @@ The API uses **explicit origins** + `allow_credentials=True`. Your **Vercel depl
 
 ---
 
-## 5. Peer Connect (Chautara) — optional second service
+## 5. Peer Connect (Chautara)
 
-`PeerConnect.tsx` reads **`VITE_CHAUTARA_API_URL`** and otherwise defaults to **`http://127.0.0.1:5001/api/chautara`**. For production:
+**Peer Connect** is part of the **same** FastAPI app as everything else: routes under **`/api/chautara/*`** come from `chautara_api.py`, which **`main.py` mounts**. Your Render **start command stays** `uvicorn main:app --host 0.0.0.0 --port $PORT` — no second service.
 
-1. Deploy **`chautara_api.py`** as a **second Render Web Service** (root could stay `Backend`, start command `python chautara_api.py` — confirm it binds to `0.0.0.0` and **`PORT`**; you may need a one-line change in `chautara_api.py` to use `os.environ["PORT"]`).
-2. On Vercel, set **`VITE_CHAUTARA_API_URL`** to that service’s public URL (including path **`/api/chautara`** if that matches your app’s prefix).
-
-Until then, Peer Connect only works when a local Chautara server is running.
+`PeerConnect.tsx` calls **`{API base}/api/chautara/...`**, matching the main API. Set **`VITE_CHAUTARA_API_URL`** only if you intentionally host Chautara on another origin later.
 
 ---
 
@@ -186,4 +183,4 @@ Current auth and incidents use **`sahara_users.db`** next to the app. On Render:
 
 ---
 
-*If you add `chautara_api` binding to `PORT` or `DB_PATH` from env, update this file and the README.*
+*Peer Connect shares the main service; optional standalone `python chautara_api.py` uses `PORT` (default 5001) for local debugging.*

@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Flame, ShieldCheck, Sparkles, User, BookOpen, PenTool, Mic, Send } from 'lucide-react';
+import { getMainApiBase } from '@/lib/apiBase';
 
-/** Chautara runs as a separate app (local :5001). Set VITE_CHAUTARA_API_URL when deployed. */
+/** Same origin as main API by default. Override with VITE_CHAUTARA_API_URL only if Chautara is split out. */
 const API =
-  import.meta.env.VITE_CHAUTARA_API_URL ?? 'http://127.0.0.1:5001/api/chautara';
+  import.meta.env.VITE_CHAUTARA_API_URL ?? `${getMainApiBase()}/api/chautara`;
 
 const PeerConnect = () => {
   const { toast } = useToast();
