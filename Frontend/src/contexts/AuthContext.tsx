@@ -239,7 +239,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!res.ok) throw new Error('stale');
         const data = (await res.json()) as AuthUser;
         if (!cancelled) setUser(data);
-        if (!cancelled) await hydrateRestoration(token);
+        // Unblock UI after /me — daily-restoration loads in background (was doubling wait on login/refresh)
+        if (!cancelled) setAuthReady(true);
+        if (!cancelled) void hydrateRestoration(token);
       } catch {
         try {
           localStorage.removeItem(TOKEN_KEY);
@@ -252,7 +254,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setRestoration(null);
           setRestorationReady(true);
         }
-      } finally {
         if (!cancelled) setAuthReady(true);
       }
     })();
@@ -316,7 +317,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const user = normalizeAuthUser(userRaw as Record<string, unknown>);
       persistSession(token, user);
-      await hydrateRestoration(token);
+      void hydrateRestoration(token);
       return user;
     },
     [persistSession, hydrateRestoration],
@@ -366,7 +367,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const user = normalizeAuthUser(userRaw as Record<string, unknown>);
       persistSession(token, user);
-      await hydrateRestoration(token);
+      void hydrateRestoration(token);
       return user;
     },
     [persistSession, hydrateRestoration],

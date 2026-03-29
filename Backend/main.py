@@ -21,6 +21,8 @@ load_dotenv()
 init_users_db()
 init_incidents_db()
 
+from chautara_api import router as chautara_router
+
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -267,6 +269,7 @@ app.include_router(auth_router, prefix="/api/auth")
 app.include_router(incident_router, prefix="/api")
 app.include_router(stt_router, prefix="/stt")
 app.include_router(chat_router, prefix="/chat")
+app.include_router(chautara_router, prefix="/api/chautara")
 
 
 # --- RUN ---

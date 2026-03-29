@@ -40,7 +40,7 @@ A bilingual (English / नेपाली) web platform that supports Nepali wom
 - **Today** — Daily “restoration” style interactions, progress, and journey-related UI tied to **`/api/auth/daily-restoration`**.
 - **Case tracker** — Case-oriented views, timelines, and help content (legal process context).
 - **Incident log** — Survivors can log incidents (type, description, priority, optional anonymity to NGO); data is stored in SQLite and visible to NGOs subject to filters.
-- **Peer Connect** — Community-style feed (posts, comments, voice hints). The UI targets a **separate Chautara API** (default **`http://127.0.0.1:5001`**, or **`VITE_CHAUTARA_API_URL`** when deployed — see [Running the application](#running-the-application)).
+- **Peer Connect** — Community-style feed (posts, comments, voice hints). Served by **`chautara_api`** routes on the **same** main API (`/api/chautara/...`). Optional **`VITE_CHAUTARA_API_URL`** overrides the base if you split Chautara out later.
 - **Safety planning** — Practical safety-oriented guidance.
 - **Legal rights** — Rights education in plain language (bilingual).
 - **Therapist / NGO** — Directory-style connection to support resources.
@@ -68,7 +68,7 @@ A bilingual (English / नेपाली) web platform that supports Nepali wom
 | Main API | FastAPI, Uvicorn, Pydantic, SQLite (users + incidents), PyJWT, bcrypt |
 | AI | Groq (chat + legal + moderation), optional Sarvam (STT) |
 | Legal RAG | `pdfminer.six`, `scikit-learn`, `sentence-transformers` / `torch` (see [Setup](#setup)) |
-| Optional | Supabase client (behavioral logging), second app `chautara_api.py` for Peer Connect feed |
+| Optional | Supabase client (behavioral logging); Peer Connect lives in `chautara_api.py`, mounted by `main.py` |
 
 Frontend **defaults** API base to **`https://path-to-strength.onrender.com`** (see `Frontend/src/lib/apiBase.ts`). For **local** FastAPI, set `VITE_API_BASE_URL=http://127.0.0.1:5000` in `Frontend/.env`. Vite **dev server** uses **port 8080** (`Frontend/vite.config.ts`).
 
@@ -112,7 +112,7 @@ Prefixes are relative to the API host (production: `https://path-to-strength.onr
 
 Interactive docs: **`/docs`** on the same API host (e.g. local `http://127.0.0.1:5000/docs` or `https://path-to-strength.onrender.com/docs`).
 
-**Peer Connect** uses **`chautara_api.py`** (local **port 5001** by default) or **`VITE_CHAUTARA_API_URL`** when Chautara is deployed separately (`PeerConnect.tsx`).
+**Peer Connect** uses **`/api/chautara/*`** on the main app (see `chautara_api.py`). **`VITE_CHAUTARA_API_URL`** only if you point the UI at a different host (`PeerConnect.tsx`).
 
 ---
 
@@ -184,15 +184,15 @@ npm run dev
 
 - Default UI: **http://localhost:8080** (see `vite.config.ts`).
 
-### 3. Chautara API (optional — Peer Connect feed)
+### 3. Chautara / Peer Connect (same process as main API)
+
+Peer Connect **`/api/chautara/feed`**, **`/post`**, **`/comment`** is included when you run the main API (step **1** above). No second server is required.
+
+Optional — run **only** Chautara on port **5001** (e.g. debugging):
 
 ```bash
-cd Backend
-source venv/bin/activate
-python chautara_api.py
+cd Backend && source venv/bin/activate && python chautara_api.py
 ```
-
-Runs on **http://127.0.0.1:5001** by default. Set **`VITE_CHAUTARA_API_URL`** for a remote Chautara service.
 
 ### CORS notes
 
@@ -220,7 +220,7 @@ The main app configures CORS for local dev (including **localhost:8080** → **1
 |----------|---------|
 | `VITE_API_BASE_URL` | Main FastAPI origin without trailing slash (default in code: `https://path-to-strength.onrender.com`; local: `http://127.0.0.1:5000`) |
 | `VITE_BACKEND_URL` | Fallback; may include `/api` — stripped by `getMainApiBase()` |
-| `VITE_CHAUTARA_API_URL` | Optional Peer Connect base (e.g. `https://…/api/chautara`); defaults to local `http://127.0.0.1:5001/api/chautara` |
+| `VITE_CHAUTARA_API_URL` | Optional override for Peer Connect; default is same origin as `VITE_API_BASE_URL` + `/api/chautara` |
 | `VITE_GROQ_API_KEY` | Only if used client-side (prefer server-side for secrets) |
 | `VITE_SUPABASE_*` | Optional behavioral / Supabase features |
 
@@ -239,7 +239,7 @@ path-to-strength/
 │   ├── chat.py              # Groq chat proxy
 │   ├── speech_to_text.py    # Sarvam STT
 │   ├── rag.py               # Legal PDF RAG helpers
-│   ├── chautara_api.py      # Standalone Peer Connect API (:5001)
+│   ├── chautara_api.py      # Peer Connect router (mounted in main.py; optional `python chautara_api.py` → :5001)
 │   ├── requirements.txt
 │   └── .env.example
 ├── Frontend/
