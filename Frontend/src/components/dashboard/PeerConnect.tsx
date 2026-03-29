@@ -5,7 +5,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Flame, ShieldCheck, Sparkles, User, BookOpen, PenTool, Mic, Send } from 'lucide-react';
 
-const API = "http://127.0.0.1:5001/api/chautara";
+/** Chautara runs as a separate app (local :5001). Set VITE_CHAUTARA_API_URL when deployed. */
+const API =
+  import.meta.env.VITE_CHAUTARA_API_URL ?? 'http://127.0.0.1:5001/api/chautara';
 
 const PeerConnect = () => {
   const { toast } = useToast();

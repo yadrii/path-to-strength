@@ -13,7 +13,7 @@ Optional: copy `.env` and set `JWT_SECRET`, `GROQ_API_KEY`, etc.
 
 ## Run the API (required for login/signup)
 
-The frontend expects the API at **`http://127.0.0.1:5000`** by default (`VITE_API_BASE_URL`).
+The frontend **defaults** to the deployed API **`https://path-to-strength.onrender.com`** when `VITE_API_BASE_URL` is unset (`Frontend/src/lib/apiBase.ts`). For **local** development against this repo, set **`VITE_API_BASE_URL=http://127.0.0.1:5000`** in `Frontend/.env`.
 
 **Option A — recommended (matches frontend default):**
 

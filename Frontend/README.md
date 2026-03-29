@@ -7,14 +7,12 @@
 
 ## Environment
 
-Create `Frontend/.env` (or copy from `.env.example` if present):
+Copy **`Frontend/.env.example`** to **`Frontend/.env`** and adjust:
 
-```env
-# Must match the backend port — default backend is port 5000
-VITE_API_BASE_URL=http://127.0.0.1:5000
-```
+- **Production / Vercel:** `VITE_API_BASE_URL=https://path-to-strength.onrender.com` (also set in the Vercel dashboard; values are baked in at build time).
+- **Local API:** `VITE_API_BASE_URL=http://127.0.0.1:5000` so the dev UI talks to your machine.
 
-If the backend runs on another host/port, set this to that base URL **without** a trailing `/api`.
+Use the API origin **without** a trailing `/api`. Optional Peer Connect: `VITE_CHAUTARA_API_URL` (see root `DEPLOYMENT.md`).
 
 ## Install & dev server
 
@@ -24,7 +22,7 @@ npm install
 npm run dev
 ```
 
-Open the URL Vite prints (usually `http://localhost:5173`).
+Open the URL Vite prints (this project is usually **`http://localhost:8080`** — see `vite.config.ts`).
 
 ## Login / signup
 

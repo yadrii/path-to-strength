@@ -18,6 +18,8 @@ A bilingual (English / नेपाली) web platform that supports Nepali wom
 10. [Testing](#testing)  
 11. [Team](#team)
 
+**Deployment:** **[DEPLOYMENT.md](./DEPLOYMENT.md)** — Render (API) + Vercel (frontend), env vars, CORS, production caveats.
+
 ---
 
 ## Features
@@ -38,7 +40,7 @@ A bilingual (English / नेपाली) web platform that supports Nepali wom
 - **Today** — Daily “restoration” style interactions, progress, and journey-related UI tied to **`/api/auth/daily-restoration`**.
 - **Case tracker** — Case-oriented views, timelines, and help content (legal process context).
 - **Incident log** — Survivors can log incidents (type, description, priority, optional anonymity to NGO); data is stored in SQLite and visible to NGOs subject to filters.
-- **Peer Connect** — Community-style feed (posts, comments, voice hints). The UI targets a **separate Chautara API** (default **`http://127.0.0.1:5001`** — see [Running the application](#running-the-application)).
+- **Peer Connect** — Community-style feed (posts, comments, voice hints). The UI targets a **separate Chautara API** (default **`http://127.0.0.1:5001`**, or **`VITE_CHAUTARA_API_URL`** when deployed — see [Running the application](#running-the-application)).
 - **Safety planning** — Practical safety-oriented guidance.
 - **Legal rights** — Rights education in plain language (bilingual).
 - **Therapist / NGO** — Directory-style connection to support resources.
@@ -68,7 +70,7 @@ A bilingual (English / नेपाली) web platform that supports Nepali wom
 | Legal RAG | `pdfminer.six`, `scikit-learn`, `sentence-transformers` / `torch` (see [Setup](#setup)) |
 | Optional | Supabase client (behavioral logging), second app `chautara_api.py` for Peer Connect feed |
 
-Frontend **defaults** API base to `http://127.0.0.1:5000` (see `Frontend/src/lib/apiBase.ts`). Vite **dev server** is configured for **port 8080** (`Frontend/vite.config.ts`).
+Frontend **defaults** API base to **`https://path-to-strength.onrender.com`** (see `Frontend/src/lib/apiBase.ts`). For **local** FastAPI, set `VITE_API_BASE_URL=http://127.0.0.1:5000` in `Frontend/.env`. Vite **dev server** uses **port 8080** (`Frontend/vite.config.ts`).
 
 ---
 
@@ -95,7 +97,7 @@ Frontend **defaults** API base to `http://127.0.0.1:5000` (see `Frontend/src/lib
 
 ## Backend API overview
 
-Prefixes are relative to the API host (e.g. `http://127.0.0.1:5000`).
+Prefixes are relative to the API host (production: `https://path-to-strength.onrender.com`, local: `http://127.0.0.1:5000`).
 
 | Area | Methods | Path (prefix) | Notes |
 |------|---------|----------------|-------|
@@ -108,9 +110,9 @@ Prefixes are relative to the API host (e.g. `http://127.0.0.1:5000`).
 | Legal chat | POST | `/api/legal-chat` | RAG + Groq |
 | Health | GET | `/health` | Liveness |
 
-Interactive docs: **`http://127.0.0.1:5000/docs`** (when the main app is running).
+Interactive docs: **`/docs`** on the same API host (e.g. local `http://127.0.0.1:5000/docs` or `https://path-to-strength.onrender.com/docs`).
 
-**Peer Connect** feed (in current code) expects **`chautara_api.py`** on **port 5001** (`PeerConnect.tsx`).
+**Peer Connect** uses **`chautara_api.py`** (local **port 5001** by default) or **`VITE_CHAUTARA_API_URL`** when Chautara is deployed separately (`PeerConnect.tsx`).
 
 ---
 
@@ -156,13 +158,7 @@ cd Frontend
 npm install
 ```
 
-Create **`Frontend/.env`** with at least:
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:5000
-```
-
-(Add other `VITE_*` keys as needed; see [Environment variables](#environment-variables).)
+Copy **`Frontend/.env.example`** to **`Frontend/.env`** and set keys (see [Environment variables](#environment-variables)). For **local** API only, use `VITE_API_BASE_URL=http://127.0.0.1:5000`.
 
 ---
 
@@ -196,7 +192,7 @@ source venv/bin/activate
 python chautara_api.py
 ```
 
-Runs on **http://127.0.0.1:5001** by default. Align `PeerConnect.tsx` **`API`** constant if you change host/port.
+Runs on **http://127.0.0.1:5001** by default. Set **`VITE_CHAUTARA_API_URL`** for a remote Chautara service.
 
 ### CORS notes
 
@@ -222,8 +218,9 @@ The main app configures CORS for local dev (including **localhost:8080** → **1
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_API_BASE_URL` | Main FastAPI origin without trailing slash (e.g. `http://127.0.0.1:5000`) |
-| `VITE_BACKEND_URL` | Fallback; may include `/api` — stripped by `apiBase` |
+| `VITE_API_BASE_URL` | Main FastAPI origin without trailing slash (default in code: `https://path-to-strength.onrender.com`; local: `http://127.0.0.1:5000`) |
+| `VITE_BACKEND_URL` | Fallback; may include `/api` — stripped by `getMainApiBase()` |
+| `VITE_CHAUTARA_API_URL` | Optional Peer Connect base (e.g. `https://…/api/chautara`); defaults to local `http://127.0.0.1:5001/api/chautara` |
 | `VITE_GROQ_API_KEY` | Only if used client-side (prefer server-side for secrets) |
 | `VITE_SUPABASE_*` | Optional behavioral / Supabase features |
 

@@ -2,17 +2,11 @@ import { useCallback, useEffect, useRef, useState, useMemo, type ReactNode } fro
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Mic, MicOff } from 'lucide-react';
 import companionAvatar from '@/assets/sangai-avatar.png';
+import { getMainApiBase } from '@/lib/apiBase';
 
 const INTRO_STORAGE_KEY = 'sangai-chat-intro-v1';
 
-function getChatApiBase(): string {
-  const fromEnv =
-    import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.VITE_BACKEND_URL as string | undefined);
-  const raw = (fromEnv || 'http://127.0.0.1:5000').replace(/\/$/, '');
-  return raw.replace(/\/api\/?$/i, '');
-}
-
-const API_BASE = getChatApiBase();
+const API_BASE = getMainApiBase();
 
 const SANGAI_SYSTEM_PROMPT =
   '[You should answer only in clean, precise Nepali. Do not mix Hindi.] You are Sangai, a warm daily companion for Nepali women. You do not know what brought her here and you do not assume she is in crisis. You listen first. You ask one gentle question at a time. You reflect back what she says in simple words before asking anything. You never use clinical language and you never diagnose. You normalize whatever she shares as a real human experience. If she discloses domestic violence, stay with her first; then gently ask once if she would like to hear about resources — do not redirect immediately. If she discloses thoughts of self-harm, respond with warmth and give the Nepal women\'s helpline 1145 immediately, and do not move on until you have. You speak like a trusted older sister, in simple colloquial Nepali, never formal or legal tone.';
