@@ -1,59 +1,29 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Flame,
-  ShieldCheck,
-  Sparkles,
-  User,
-  BookOpen,
-  PenTool,
-  Mic,
-  MapPin,
-  Send,
-  Loader2
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Flame, ShieldCheck, Sparkles, User, BookOpen, PenTool, Mic, Send } from 'lucide-react';
 
-const API = "http://localhost:5001/api/chautara";
-
-function getMainApiBase(): string {
-  const fromEnv =
-    import.meta.env.VITE_API_BASE_URL ??
-    (import.meta.env.VITE_BACKEND_URL as string | undefined);
-  const raw = (fromEnv || 'http://127.0.0.1:5000').replace(/\/$/, '');
-  return raw.replace(/\/api\/?$/i, '');
-}
+const API = "http://127.0.0.1:5001/api/chautara";
 
 const PeerConnect = () => {
-  const { t } = useLanguage();
   const { toast } = useToast();
 
   const [feed, setFeed] = useState<any[]>([]);
   const [text, setText] = useState("");
   const [mode, setMode] = useState<'share' | 'read'>('share');
   const [isListening, setIsListening] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [commentInputs, setCommentInputs] = useState<{[key: string]: string}>({});
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-
-  const [commentInputs, setCommentInputs] = useState<{ [key: string]: string }>({});
-
-  // ---------- LOAD FEED ----------
+  // ---------------- LOAD FEED ---------------- //
   const loadFeed = async () => {
     try {
       const res = await fetch(`${API}/feed`);
-      if (!res.ok) throw new Error();
       const data = await res.json();
       setFeed(data);
     } catch (e) {
-      console.error(e);
+      console.error("Feed error:", e);
     }
   };
 
@@ -63,189 +33,212 @@ const PeerConnect = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // ---------- VOICE ----------
+  // ---------------- VOICE ---------------- //
   const startVoice = () => {
-    const SpeechRecognition =
-      (window as any).webkitSpeechRecognition ||
-      (window as any).SpeechRecognition;
-
-    if (!SpeechRecognition) return;
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    if (!SpeechRecognition) return alert("Mic not supported");
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'ne-NP';
 
     recognition.onstart = () => setIsListening(true);
-
-    recognition.onresult = (e: any) => {
-      const transcript = e.results[0][0].transcript;
-      setText(prev => prev + " " + transcript);
-    };
-
+    recognition.onresult = (e: any) =>
+      setText(prev => prev + " " + e.results[0][0].transcript);
     recognition.onend = () => setIsListening(false);
+
     recognition.start();
   };
 
-  // ---------- RECORD ----------
-  const transcribeBlob = useCallback(async (audioBlob: Blob) => {
-    const base = getMainApiBase();
-    const formData = new FormData();
-    formData.append('file', audioBlob);
-
-    setIsTranscribing(true);
-
-    try {
-      const res = await fetch(`${base}/stt/transcribe`, {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await res.json();
-      if (data.transcript) {
-        setText(prev => prev + " " + data.transcript);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsTranscribing(false);
-    }
-  }, []);
-
-  const toggleMic = async () => {
-    if (isRecording) {
-      mediaRecorderRef.current?.stop();
-      setIsRecording(false);
-      return;
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
-
-    recorder.ondataavailable = e => audioChunksRef.current.push(e.data);
-
-    recorder.onstop = async () => {
-      const blob = new Blob(audioChunksRef.current);
-      await transcribeBlob(blob);
-    };
-
-    recorder.start();
-    mediaRecorderRef.current = recorder;
-    audioChunksRef.current = [];
-    setIsRecording(true);
-  };
-
-  // ---------- POST ----------
+  // ---------------- POST STORY ---------------- //
   const handlePost = async () => {
     if (!text.trim()) return;
 
-    setLoading(true);
-
     try {
-      await fetch(`${API}/post`, {
+      const res = await fetch(`${API}/post`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: text })
       });
 
+      if (!res.ok) throw new Error("Post failed");
+
       setText("");
       setMode('read');
       await loadFeed();
-    } finally {
-      setLoading(false);
+
+      toast({
+        title: "Story Witnessed",
+        description: "Your story has been added to the sanctuary."
+      });
+
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to post story"
+      });
     }
   };
 
-  const handleComment = async (storyId: string) => {
+  // ---------------- COMMENT ---------------- //
+  const handleManualComment = async (storyId: string) => {
     const content = commentInputs[storyId];
-    if (!content?.trim()) return;
+    if (!content || !content.trim()) return;
 
-    await fetch(`${API}/comment`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ story_id: storyId, content })
-    });
+    try {
+      const res = await fetch(`${API}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ story_id: storyId, content })
+      });
 
-    setCommentInputs(prev => ({ ...prev, [storyId]: "" }));
-    await loadFeed();
+      if (!res.ok) throw new Error("Blocked");
+
+      setCommentInputs(prev => ({ ...prev, [storyId]: "" }));
+      await loadFeed();
+
+      toast({ title: "Support sent ❤️" });
+
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Blocked",
+        description: "Message not allowed"
+      });
+    }
   };
 
+  // ---------------- UI ---------------- //
   return (
-    <div className="max-w-2xl mx-auto h-screen flex flex-col pb-10 px-4 overflow-hidden">
+    <div className="max-w-3xl mx-auto h-screen flex flex-col pb-6 px-4 bg-gradient-to-b from-slate-50 to-white">
 
-      {/* TOGGLE */}
-      <div className="flex justify-center py-6">
-        <div className="flex rounded-full border bg-white p-1 shadow-md">
-          <Button onClick={() => setMode('share')} className="rounded-full px-6 text-xs">
-            <PenTool className="h-3 w-3" /> Share
+      {/* HEADER */}
+      <div className="py-6 flex flex-col items-center gap-4">
+        <h2 className="text-3xl font-bold tracking-tight text-primary flex items-center gap-2">
+          <Sparkles className="h-5 w-5" />
+          Chautara Courtyard
+        </h2>
+
+        <div className="bg-white p-1 rounded-full shadow-lg border flex gap-1">
+          <Button
+            size="sm"
+            className="rounded-full"
+            variant={mode === 'share' ? "default" : "ghost"}
+            onClick={() => setMode('share')}
+          >
+            <PenTool className="h-3 w-3 mr-1" /> Share
           </Button>
-          <Button onClick={() => setMode('read')} className="rounded-full px-6 text-xs">
-            <BookOpen className="h-3 w-3" /> Read
+          <Button
+            size="sm"
+            className="rounded-full"
+            variant={mode === 'read' ? "default" : "ghost"}
+            onClick={() => setMode('read')}
+          >
+            <BookOpen className="h-3 w-3 mr-1" /> Read
           </Button>
         </div>
       </div>
 
-      {/* MAIN */}
-      <div className="flex-1 overflow-hidden">
-        {mode === 'share' ? (
-          <Card>
-            <CardContent className="p-6 space-y-4">
+      {/* SHARE MODE */}
+      {mode === 'share' ? (
+        <Card className="p-6 space-y-4 shadow-xl border border-slate-100">
 
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="w-full p-4 border rounded-xl"
-              />
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Share what’s on your mind..."
+            className="w-full p-4 border rounded-xl resize-none focus:ring-2 focus:ring-primary outline-none"
+          />
 
-              <div className="flex gap-2">
-                <Button onClick={startVoice}>
-                  <Mic />
-                </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={startVoice}
+              variant="outline"
+              className="rounded-xl"
+            >
+              <Mic className="h-4 w-4" />
+            </Button>
 
-                <Button onClick={toggleMic}>
-                  {isTranscribing ? <Loader2 className="animate-spin" /> : <Mic />}
-                </Button>
+            <Button
+              onClick={handlePost}
+              className="flex-1 rounded-xl bg-primary hover:opacity-90"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Share Story
+            </Button>
+          </div>
 
-                <Button onClick={handlePost} disabled={loading}>
-                  <Send /> Send
-                </Button>
-              </div>
+        </Card>
+      ) : (
 
-            </CardContent>
-          </Card>
-        ) : (
-          <ScrollArea className="h-full">
-            <div className="space-y-6 pb-20">
-              {feed.map((story) => (
-                <Card key={story.id}>
-                  <CardContent className="p-6">
+        /* READ MODE */
+        <ScrollArea className="flex-1 pr-2">
+          <div className="space-y-6 pb-4">
 
-                    <p>{story.content}</p>
+            {feed.map((story) => (
+              <Card
+                key={story.id}
+                className="p-5 rounded-2xl shadow-md border border-slate-100 hover:shadow-lg transition"
+              >
 
-                    <div className="mt-4 flex gap-2">
-                      <input
-                        value={commentInputs[story.id] || ""}
-                        onChange={(e) =>
-                          setCommentInputs(prev => ({
-                            ...prev,
-                            [story.id]: e.target.value
-                          }))
-                        }
-                        className="flex-1 border p-2 rounded"
-                      />
-                      <Button onClick={() => handleComment(story.id)}>
-                        Send
-                      </Button>
+                {/* STORY */}
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="bg-primary/10 p-2 rounded-full">
+                    <User className="h-4 w-4 text-primary" />
+                  </div>
+
+                  <p className="text-base leading-relaxed italic text-foreground/90">
+                    {story.content}
+                  </p>
+                </div>
+
+                {/* COMMENTS */}
+                <div className="space-y-2 mb-3">
+                  {story.replies?.map((r: any, i: number) => (
+                    <div
+                      key={i}
+                      className="bg-slate-100 px-3 py-2 rounded-xl text-sm flex items-start gap-2"
+                    >
+                      <Flame className="h-3 w-3 mt-1 text-orange-400" />
+                      <span>{r.content}</span>
                     </div>
+                  ))}
+                </div>
 
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
-        )}
-      </div>
+                {/* COMMENT INPUT */}
+                <div className="flex gap-2 mt-3">
+                  <input
+                    value={commentInputs[story.id] || ""}
+                    onChange={(e) =>
+                      setCommentInputs(prev => ({
+                        ...prev,
+                        [story.id]: e.target.value
+                      }))
+                    }
+                    placeholder="Send support..."
+                    className="flex-1 border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+                  />
 
-      <div className="text-center text-xs pt-4">
-        <ShieldCheck className="h-3 w-3 inline" /> Safe Space
+                  <Button
+                    size="icon"
+                    onClick={() => handleManualComment(story.id)}
+                    className="rounded-xl"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+
+              </Card>
+            ))}
+
+          </div>
+        </ScrollArea>
+      )}
+
+      {/* FOOTER */}
+      <div className="text-center text-xs mt-4 opacity-50 flex items-center justify-center gap-1">
+        <ShieldCheck className="h-3 w-3" />
+        Safe Sanctuary Space
       </div>
     </div>
   );
