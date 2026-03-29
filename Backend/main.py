@@ -25,6 +25,55 @@ init_incidents_db()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def _cors_allow_origins() -> list[str]:
+    """Browsers reject Access-Control-Allow-Origin: * when credentials are used; list real origins."""
+    defaults = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    out: list[str] = []
+    extra = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
+    if extra:
+        out.extend(x.strip() for x in extra.split(",") if x.strip())
+    fe = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+    if fe:
+        out.append(fe)
+    for d in defaults:
+        if d not in out:
+            out.append(d)
+    seen: set[str] = set()
+    unique: list[str] = []
+    for o in out:
+        if o not in seen:
+            seen.add(o)
+            unique.append(o)
+    return unique
+
+
+def _cors_origin_regex() -> str | None:
+    """
+    When you open the app via Vite's Network URL (e.g. http://10.x.x.x:8080 from a phone),
+    the browser sends that origin — it is not the same as http://localhost:8080.
+    Set CORS_ALLOW_LAN=1 in Backend/.env for local dev on private networks.
+    """
+    if os.getenv("CORS_ALLOW_LAN", "").lower() not in ("1", "true", "yes"):
+        return None
+    # loopback + RFC1918 private ranges, any port (matches Vite :8080, :5173, etc.)
+    return (
+        r"^https?://("
+        r"localhost|127\.0\.0\.1|"
+        r"10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
+        r"192\.168\.\d{1,3}\.\d{1,3}|"
+        r"172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}"
+        r")(:\d+)?$"
+    )
+
+
 # FastAPI app
 app = FastAPI(
     title="AAFNAI Main API",
@@ -32,12 +81,16 @@ app = FastAPI(
 )
 
 # --- CORS ---
+# allow_private_network: Chrome sends a PNA preflight when the page (e.g. localhost:8080)
+# targets a "local" address (e.g. 127.0.0.1:5000). Without this, preflight returns 400 and login fails.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_allow_origins(),
+    allow_origin_regex=_cors_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_private_network=True,
 )
 
 # --- MODELS ---
@@ -140,10 +193,8 @@ from rag import load_pdfs, build_db, handle_query
 try:
     load_pdfs()
     build_db()
-except:
+except Exception:
     pass
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 with open("local_data.json") as f:
     local_data = json.load(f)
@@ -187,9 +238,9 @@ User Query:
 {query}
 """
 
-            response = client.chat.completions.create(
+            response = _get_groq_client().chat.completions.create(
                 model="llama3-70b-8192",
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
 
             return {

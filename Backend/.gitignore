@@ -4,15 +4,6 @@ env/
 __pycache__/
 *.pyc
 .env
-<<<<<<< HEAD
-node_modules/
-=======
-
-sangai_users.db
-
-<<<<<<< HEAD
+*.db
 node_modules/
 dist/
-=======
->>>>>>> feat/ui-updated
->>>>>>> a4a3f785dd38b28c1f2b5ba7fb1852c2dfaff39d
