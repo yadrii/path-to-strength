@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -37,7 +38,12 @@ function emotionalNoteText(note: string | undefined, t: (en: string, ne: string)
   return note;
 }
 
-const CaseTracker = () => {
+interface CaseTimelineProps {
+  /** When true, omits the main PageHeader (e.g. nested under Case Tracker page). */
+  hideHeader?: boolean;
+}
+
+const CaseTimeline = ({ hideHeader = false }: CaseTimelineProps) => {
   const { t } = useLanguage();
   const [events, setEvents] = useState<CaseEventPersisted[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -71,10 +77,15 @@ const CaseTracker = () => {
       type: newType,
       title: newTitle.trim(),
       status: newStatus,
+      notes: '',
     };
     persist([...events, ev]);
     setNewTitle('');
     setOpen(false);
+  };
+
+  const setEventNotes = (id: string, notes: string) => {
+    persist(events.map((ev) => (ev.id === id ? { ...ev, notes } : ev)));
   };
 
   if (!loaded) {
@@ -85,17 +96,32 @@ const CaseTracker = () => {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        eyebrow={t('Legal process', 'कानुनी प्रक्रिया')}
-        title={t('Case timeline', 'मुद्दाको समयरेखा')}
-        description={t('Saved on this device — sync from backend when available.', 'यो यन्त्रमा बचत — ब्याकएन्ड जोड्दा मिलाउन सकिन्छ।')}
-        action={
+      {hideHeader ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-xl text-sm text-muted-foreground">
+            {t(
+              'Saved on this device — sync from backend when available.',
+              'यो यन्त्रमा बचत — ब्याकएन्ड जोड्दा मिलाउन सकिन्छ।',
+            )}
+          </p>
           <Button className="btn-hero shrink-0 gap-2 rounded-full text-sm" type="button" onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
             {t('Add event', 'घटना थप्नुहोस्')}
           </Button>
-        }
-      />
+        </div>
+      ) : (
+        <PageHeader
+          eyebrow={t('Legal process', 'कानुनी प्रक्रिया')}
+          title={t('Case timeline', 'मुद्दाको समयरेखा')}
+          description={t('Saved on this device — sync from backend when available.', 'यो यन्त्रमा बचत — ब्याकएन्ड जोड्दा मिलाउन सकिन्छ।')}
+          action={
+            <Button className="btn-hero shrink-0 gap-2 rounded-full text-sm" type="button" onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4" />
+              {t('Add event', 'घटना थप्नुहोस्')}
+            </Button>
+          }
+        />
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="rounded-2xl sm:max-w-md">
@@ -208,6 +234,22 @@ const CaseTracker = () => {
                     </div>
                   </div>
                 )}
+                <div className="mt-4 space-y-2 border-t border-border/50 pt-4">
+                  <Label htmlFor={`case-notes-${event.id}`} className="text-xs font-medium text-muted-foreground">
+                    {t('Notes', 'नोटहरू')}
+                  </Label>
+                  <Textarea
+                    id={`case-notes-${event.id}`}
+                    value={event.notes ?? ''}
+                    onChange={(e) => setEventNotes(event.id, e.target.value)}
+                    placeholder={t('Private notes for this step…', 'यस चरणका लागि निजी नोट…')}
+                    rows={3}
+                    className="min-h-[72px] resize-y rounded-xl border-border/80 text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('Saved on this device with this case step.', 'यो यन्त्रमा यो चरणसँगै बचत हुन्छ।')}
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -217,4 +259,4 @@ const CaseTracker = () => {
   );
 };
 
-export default CaseTracker;
+export default CaseTimeline;

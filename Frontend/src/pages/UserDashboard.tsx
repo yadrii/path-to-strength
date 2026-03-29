@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
-import CaseTracker from '@/components/dashboard/CaseTracker';
-import IncidentLog from '@/components/dashboard/IncidentLog';
+import CaseTrackerPage from '@/components/dashboard/CaseTrackerPage';
 import PeerConnect from '@/components/dashboard/PeerConnect';
 import SafetyPlanning from '@/components/dashboard/SafetyPlanning';
 import LegalRights from '@/components/dashboard/LegalRights';
@@ -14,7 +13,7 @@ import TodayScreen from '@/components/dashboard/TodayScreen';
 import WellnessSpectrum, { type WellnessPath } from '@/components/dashboard/WellnessSpectrum';
 import {
   Scale,
-  FileText,
+  Calendar,
   Users,
   Shield,
   BookOpen,
@@ -27,13 +26,14 @@ import {
 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { applyMoodThemeFromKey } from '@/lib/moodTheme';
 
 const WELLNESS_SESSION_KEY = 'aafnai_wellness_gate_v1';
 
 const defaultTabForPath = (p: WellnessPath) => {
   switch (p) {
     case 'heavy':
-      return 'case';
+      return 'today';
     case 'unsettled':
       return 'rights';
     case 'alone':
@@ -41,13 +41,13 @@ const defaultTabForPath = (p: WellnessPath) => {
     case 'support':
       return 'safety';
     default:
-      return 'case';
+      return 'today';
   }
 };
 
 const navItems = [
+  { key: 'today', icon: Calendar, labelEn: 'Today', labelNe: 'आज' },
   { key: 'case', icon: Scale, labelEn: 'Case Tracker', labelNe: 'मुद्दा ट्र्याकर' },
-  { key: 'incident', icon: FileText, labelEn: 'Incident Log', labelNe: 'घटना लग' },
   { key: 'peer', icon: Users, labelEn: 'Peer Connect', labelNe: 'साथी जडान' },
   { key: 'safety', icon: Shield, labelEn: 'Safety Plan', labelNe: 'सुरक्षा योजना' },
   { key: 'rights', icon: BookOpen, labelEn: 'Legal Rights', labelNe: 'कानुनी अधिकार' },
@@ -58,7 +58,7 @@ const navItems = [
 const UserDashboard = () => {
   const { t } = useLanguage();
   const { isAuthenticated, user, authReady } = useAuth();
-  const [activeTab, setActiveTab] = useState('case');
+  const [activeTab, setActiveTab] = useState('today');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [moodDone, setMoodDone] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
@@ -70,13 +70,17 @@ const UserDashboard = () => {
     }
   });
 
+  useEffect(() => {
+    if (selectedMood) applyMoodThemeFromKey(selectedMood);
+  }, [selectedMood]);
+
   if (!authReady) {
     return <div className="min-h-screen bg-background" aria-busy="true" />;
   }
   if (!isAuthenticated || user?.role !== 'user') return <Navigate to="/auth" />;
 
-  const handleMoodDone = (moodHex: string) => {
-    setSelectedMood(moodHex);
+  const handleMoodDone = (moodKey: string) => {
+    setSelectedMood(moodKey);
     setMoodDone(true);
     setTimeout(() => {
       setSidebarOpen(typeof window !== 'undefined' && window.innerWidth >= 1024);
@@ -95,10 +99,10 @@ const UserDashboard = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'case':
+      case 'today':
         return <TodayScreen moodColor={selectedMood ?? 'green'} />;
-      case 'incident':
-        return <IncidentLog />;
+      case 'case':
+        return <CaseTrackerPage />;
       case 'peer':
         return <PeerConnect />;
       case 'safety':

@@ -2,10 +2,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Phone, MapPin, MessageSquare, BookOpen, Scale, Heart } from 'lucide-react';
-import CaseTracker from '@/components/dashboard/CaseTracker';
+import CaseTrackerPage from '@/components/dashboard/CaseTrackerPage';
 import LegalRights from '@/components/dashboard/LegalRights';
 import SafetyPlanning from '@/components/dashboard/SafetyPlanning';
-import IncidentLog from '@/components/dashboard/IncidentLog';
 import TherapistConnect from '@/components/dashboard/TherapistConnect';
 
 const SMS_BODY_NE =
@@ -128,15 +127,12 @@ const HelpHub = () => {
         </h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
           {t(
-            'Case timeline, incident notes, and safety planning — for when you are ready.',
-            'मुद्दाको समयरेखा, घटना नोट, र सुरक्षा योजना — जब तपाईं तयार हुनुहुन्छ।',
+            'Case tracker (timeline with notes on each step) and safety planning — for when you are ready.',
+            'मुद्दा ट्र्याकर (प्रत्येक चरणमा नोटसहित समयरेखा) र सुरक्षा योजना — जब तपाईं तयार हुनुहुन्छ।',
           )}
         </p>
         <div className="space-y-10 pt-4">
-          <CaseTracker />
-          <div className="border-t border-border/60 pt-10">
-            <IncidentLog />
-          </div>
+          <CaseTrackerPage variant="embedded" />
           <div className="border-t border-border/60 pt-10">
             <SafetyPlanning />
           </div>

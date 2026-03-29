@@ -1,21 +1,15 @@
 import { useCallback, useEffect, useRef, useState, useMemo, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Mic, MicOff } from 'lucide-react';
-import saharaAvatar from '@/assets/sahara-avatar.png';
+import companionAvatar from '@/assets/sangai-avatar.png';
+import { getMainApiBase } from '@/lib/apiBase';
 
-const INTRO_STORAGE_KEY = 'sahara-chat-intro-v1';
+const INTRO_STORAGE_KEY = 'sangai-chat-intro-v1';
 
-function getChatApiBase(): string {
-  const fromEnv =
-    import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.VITE_BACKEND_URL as string | undefined);
-  const raw = (fromEnv || 'http://127.0.0.1:5000').replace(/\/$/, '');
-  return raw.replace(/\/api\/?$/i, '');
-}
+const API_BASE = getMainApiBase();
 
-const API_BASE = getChatApiBase();
-
-const SAHARA_SYSTEM_PROMPT =
-  '[You should answer only in clean, precise Nepali. Do not mix Hindi.] You are Sahara, a warm daily companion for Nepali women. You do not know what brought her here and you do not assume she is in crisis. You listen first. You ask one gentle question at a time. You reflect back what she says in simple words before asking anything. You never use clinical language and you never diagnose. You normalize whatever she shares as a real human experience. If she discloses domestic violence, stay with her first; then gently ask once if she would like to hear about resources — do not redirect immediately. If she discloses thoughts of self-harm, respond with warmth and give the Nepal women\'s helpline 1145 immediately, and do not move on until you have. You speak like a trusted older sister, in simple colloquial Nepali, never formal or legal tone.';
+const SANGAI_SYSTEM_PROMPT =
+  '[You should answer only in clean, precise Nepali. Do not mix Hindi.] You are Sangai, a warm daily companion for Nepali women. You do not know what brought her here and you do not assume she is in crisis. You listen first. You ask one gentle question at a time. You reflect back what she says in simple words before asking anything. You never use clinical language and you never diagnose. You normalize whatever she shares as a real human experience. If she discloses domestic violence, stay with her first; then gently ask once if she would like to hear about resources — do not redirect immediately. If she discloses thoughts of self-harm, respond with warmth and give the Nepal women\'s helpline 1145 immediately, and do not move on until you have. You speak like a trusted older sister, in simple colloquial Nepali, never formal or legal tone.';
 
 interface Message {
   id: string;
@@ -26,7 +20,7 @@ interface Message {
 const INTRO_LINES = [
   { size: 28 as const, weight: 500 as const, muted: false, text: 'नमस्ते 🙏' },
   { size: 20 as const, muted: false, text: 'आज के छ मनमा?' },
-  { size: 18 as const, muted: true, text: 'म सहारा — दिदी जस्तै साथी।' },
+  { size: 18 as const, muted: true, text: 'म सङ्गै — दिदी जस्तै साथी।' },
   { size: 18 as const, muted: true, text: 'जे भए पनि, एक्लो हुनु पर्दैन।' },
 ];
 
@@ -75,11 +69,11 @@ function SpeechBubbleFrame({ children }: { children: ReactNode }) {
     <div
       className="relative box-border w-full max-w-full bg-white"
       style={{
-        borderRadius: 20,
+        borderRadius: 22,
         border: '0.5px solid var(--color-border-tertiary)',
-        padding: 'clamp(12px,3vw,18px) clamp(14px,4vw,24px)',
-        minWidth: 'min(100%, 260px)',
-        maxWidth: 'min(520px, calc(100vw - 24px))',
+        padding: 'clamp(16px,3.5vw,22px) clamp(16px,4.5vw,28px)',
+        minWidth: 'min(100%, 300px)',
+        maxWidth: 'min(560px, calc(100vw - 24px))',
       }}
     >
       {children}
@@ -132,7 +126,7 @@ const Chatbot = () => {
   const [messages, setMessages] = useState<Message[]>(() => [
     { id: 'welcome', role: 'bot', text: greeting },
   ]);
-  const [bubbleMode, setBubbleMode] = useState<'sahara' | 'typing'>('sahara');
+  const [bubbleMode, setBubbleMode] = useState<'sangai' | 'typing'>('sangai');
 
   const [mainBubbleVisible, setMainBubbleVisible] = useState(false);
   const [avatarEntranceDone, setAvatarEntranceDone] = useState(false);
@@ -294,7 +288,7 @@ const Chatbot = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_prompt: SAHARA_SYSTEM_PROMPT,
+          system_prompt: SANGAI_SYSTEM_PROMPT,
           messages: historyForApi,
         }),
       });
@@ -312,13 +306,13 @@ const Chatbot = () => {
       ]);
 
       await new Promise((r) => setTimeout(r, 200));
-      setBubbleMode('sahara');
+      setBubbleMode('sangai');
     } catch (error) {
       console.error('Error calling chat API:', error);
       const errText = 'माफ गर्नुहोस्, म अहिलै कनेक्ट गर्न समस्यामा छु।';
       setMessages((prev) => [...prev, { id: `b-${Date.now()}`, role: 'bot', text: errText }]);
       await new Promise((r) => setTimeout(r, 200));
-      setBubbleMode('sahara');
+      setBubbleMode('sangai');
     } finally {
       setIsAwaitingResponse(false);
     }
@@ -346,7 +340,7 @@ const Chatbot = () => {
         }}
       >
         <img
-          src={saharaAvatar}
+          src={companionAvatar}
           alt=""
           className="h-full w-auto max-w-full select-none"
           style={{ objectFit: 'contain', objectPosition: 'top' }}
@@ -422,24 +416,24 @@ const Chatbot = () => {
             className="relative min-h-0 flex-1 overflow-hidden"
             style={{ background: CONTENT_BG }}
           >
-            {/* सहारा label */}
+            {/* सङ्गै label */}
             <p
               className="pointer-events-none absolute left-1/2 z-20 text-center text-[12px] sm:text-[13px]"
               style={{
-                bottom: 'clamp(200px, 42vh, 400px)',
+                bottom: 'clamp(230px, 48vh, 440px)',
                 transform: 'translateX(-50%)',
                 color: 'var(--color-text-secondary)',
               }}
             >
-              सहारा
+              सङ्गै
             </p>
 
             {/* Main speech bubble — scrollable conversation */}
             {mainBubbleVisible && (
               <div
-                className="pointer-events-auto absolute left-1/2 z-20 w-[min(520px,calc(100%-24px))] min-w-0 max-w-[calc(100vw-24px)] -translate-x-1/2 sm:w-[min(520px,calc(100%-48px))]"
+                className="pointer-events-auto absolute left-1/2 z-20 w-[min(560px,calc(100%-24px))] min-w-0 max-w-[calc(100vw-24px)] -translate-x-1/2 sm:w-[min(560px,calc(100%-48px))]"
                 style={{
-                  bottom: 'clamp(100px, 26vh, 340px)',
+                  bottom: 'clamp(128px, 34vh, 400px)',
                 }}
               >
                 <motion.div
@@ -450,7 +444,7 @@ const Chatbot = () => {
                   <SpeechBubbleFrame>
                     <div
                       ref={conversationScrollRef}
-                      className="flex max-h-[min(38vh,220px)] flex-col gap-3 overflow-y-auto overscroll-contain pr-1 text-[15px] leading-[1.7] sm:max-h-[min(42vh,300px)] sm:text-[17px]"
+                      className="flex max-h-[min(44vh,280px)] flex-col gap-3 overflow-y-auto overscroll-contain pr-1 text-[16px] leading-[1.75] sm:max-h-[min(50vh,360px)] sm:text-[18px]"
                       style={{ color: 'var(--color-text-primary)' }}
                     >
                       {messages.map((msg) => (
@@ -503,7 +497,7 @@ const Chatbot = () => {
               </div>
             )}
 
-            {/* Grounded Sahara — slide up then gentle float */}
+            {/* Grounded companion — slide up then gentle float */}
             <motion.div
               className="pointer-events-none absolute bottom-0 left-1/2 z-10 -translate-x-1/2"
               initial={{ y: 200 }}
@@ -523,7 +517,7 @@ const Chatbot = () => {
               }}
             >
               <img
-                src={saharaAvatar}
+                src={companionAvatar}
                 alt=""
                 className="block h-[clamp(200px,36vh,420px)] w-auto max-w-[min(100vw,720px)] select-none"
                 style={{

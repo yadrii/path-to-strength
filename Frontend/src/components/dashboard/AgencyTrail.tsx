@@ -7,7 +7,6 @@ import {
   getTierFromJourney,
   pointOnMeander,
   dotSizePx,
-  tierDotColor,
   buildWeeklyMirror,
   getJourneyDayCount,
 } from '@/lib/journeyStorage';
@@ -136,8 +135,8 @@ const AgencyTrail = () => {
                 width: size,
                 height: size,
                 transform: 'translate(-50%, -50%)',
-                backgroundColor: tierDotColor(dot.tier),
-                opacity: 0.92,
+                backgroundColor: 'var(--mood-accent, hsl(var(--primary)))',
+                opacity: 0.78 + (dot.tier - 1) * 0.09,
               }}
             />
           ))

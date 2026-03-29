@@ -145,6 +145,11 @@ export function NgoCaseCard({ patient, t, onUpdated, updatingId, setUpdatingId }
                   <p className="mt-0.5 text-sm text-muted-foreground">
                     {stageLabel(patient.incident_type, t)} · {formatDistanceToNow(new Date(patient.created_at * 1000), { addSuffix: true })}
                   </p>
+                  {patient.reporter_kind !== 'anonymous' && patient.reporter_district ? (
+                    <p className="mt-1 text-xs font-medium text-primary/90">
+                      {t('District', 'जिल्ला')}: {patient.reporter_district}
+                    </p>
+                  ) : null}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">

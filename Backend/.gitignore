@@ -4,6 +4,6 @@ env/
 __pycache__/
 *.pyc
 .env
-
-sahara_users.db
-
+*.db
+node_modules/
+dist/

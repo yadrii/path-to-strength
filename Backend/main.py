@@ -3,6 +3,7 @@ import json
 import logging
 import random
 import time
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -15,6 +16,7 @@ from chat import router as chat_router
 from auth_routes import router as auth_router, init_users_db
 from incident_routes import router as incident_router, init_incidents_db
 
+# Load environment variables
 load_dotenv()
 init_users_db()
 init_incidents_db()
@@ -23,31 +25,87 @@ init_incidents_db()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def _cors_allow_origins() -> list[str]:
+    """Browsers reject Access-Control-Allow-Origin: * when credentials are used; list real origins."""
+    defaults = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    out: list[str] = []
+    extra = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
+    if extra:
+        out.extend(x.strip() for x in extra.split(",") if x.strip())
+    fe = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+    if fe:
+        out.append(fe)
+    for d in defaults:
+        if d not in out:
+            out.append(d)
+    seen: set[str] = set()
+    unique: list[str] = []
+    for o in out:
+        if o not in seen:
+            seen.add(o)
+            unique.append(o)
+    return unique
+
+
+def _cors_origin_regex() -> str | None:
+    """
+    When you open the app via Vite's Network URL (e.g. http://10.x.x.x:8080 from a phone),
+    the browser sends that origin — it is not the same as http://localhost:8080.
+    Set CORS_ALLOW_LAN=1 in Backend/.env for local dev on private networks.
+    """
+    if os.getenv("CORS_ALLOW_LAN", "").lower() not in ("1", "true", "yes"):
+        return None
+    # loopback + RFC1918 private ranges, any port (matches Vite :8080, :5173, etc.)
+    return (
+        r"^https?://("
+        r"localhost|127\.0\.0\.1|"
+        r"10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
+        r"192\.168\.\d{1,3}\.\d{1,3}|"
+        r"172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}"
+        r")(:\d+)?$"
+    )
+
+
+# FastAPI app
 app = FastAPI(
     title="AAFNAI Main API",
     version="1.0.0",
 )
 
-# --- FIXED CORS FOR VITE (PORT 8080) ---
+# --- CORS ---
+# allow_private_network: Chrome sends a PNA preflight when the page (e.g. localhost:8080)
+# targets a "local" address (e.g. 127.0.0.1:5000). Without this, preflight returns 400 and login fails.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Wide open for hackathon stability
+    allow_origins=_cors_allow_origins(),
+    allow_origin_regex=_cors_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_private_network=True,
 )
 
-# --- CHAUTARA DATA MODELS ---
+# --- MODELS ---
 class Pebble(BaseModel):
     content: str = Field(..., max_length=120)
     district: str = "Anonymous"
     stage_month: int = 1
 
+
 class InteractionRequest(BaseModel):
     content: str
-    type: str  # "vent" (original story) or "comment" (support reply)
+    type: str
 
-# --- DATABASE & GROQ SETUP ---
+
+# --- DB + GROQ ---
 CHAUTARA_DB = "chautari_sanctuary.json"
 _groq_client = None
 
@@ -56,101 +114,162 @@ def _get_groq_client() -> Groq:
     global _groq_client
     key = os.environ.get("VITE_GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
     if not key:
-        raise HTTPException(
-            status_code=503,
-            detail="Set GROQ_API_KEY or VITE_GROQ_API_KEY for moderation features.",
-        )
+        raise HTTPException(status_code=503, detail="Missing GROQ_API_KEY")
     if _groq_client is None:
         _groq_client = Groq(api_key=key)
     return _groq_client
 
+
 def get_db():
     if not os.path.exists(CHAUTARA_DB):
-        # Initial Seed Data for the Hackathon Demo
         seed = {
-            "pebbles": [
-                {"id": "p1", "content": "The hearing was moved again. I feel heavy today.", "district": "Kathmandu", "flames": 2, "stage_month": 3},
-                {"id": "p2", "content": "I finally found a safe room. It's quiet here.", "district": "Pokhara", "flames": 5, "stage_month": 1}
-            ],
+            "pebbles": [],
             "diyas": [],
-            "stories": [
-                {"id": "s1", "content": "Month 3: I stopped waiting for his apology. I started waiting for my own peace.", "location": "Butwal", "stage_month": 3, "time_ago": "2 days ago"},
-                {"id": "s2", "content": "Month 8: Facing the judge was scary, but the truth was my shield.", "location": "Lalitpur", "stage_month": 8, "time_ago": "5 hours ago"}
-            ]
+            "stories": []
         }
         with open(CHAUTARA_DB, "w", encoding="utf-8") as f:
             json.dump(seed, f, indent=2)
         return seed
+
     with open(CHAUTARA_DB, "r", encoding="utf-8") as f:
-        try: return json.load(f)
-        except: return {"pebbles": [], "diyas": [], "stories": []}
+        return json.load(f)
+
 
 def save_db(db):
     with open(CHAUTARA_DB, "w", encoding="utf-8") as f:
         json.dump(db, f, indent=2, ensure_ascii=False)
 
-# --- EXISTING HEALTH ROUTES ---
+
+# --- ROUTES ---
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "Main API Running"}
+    return {"status": "ok"}
 
-# --- NEW CHAUTARA SANCTUARY ROUTES ---
-
-@app.get("/api/sanctuary/{current_month}")
-async def get_sanctuary(current_month: int):
-    db = get_db()
-    current_time = time.time()
-    
-    # Filter stories matched to the user's specific legal stage month
-    matched_stories = [s for s in db.get("stories", []) if s["stage_month"] == current_month]
-    
-    return {
-        "pebbles": db.get("pebbles", []),
-        "diyas_count": len(db.get("diyas", [])),
-        "stories": matched_stories
-    }
-
-@app.post("/api/pebbles")
-async def drop_pebble(pebble: Pebble):
-    db = get_db()
-    db["pebbles"].append({**pebble.model_dump(), "id": os.urandom(3).hex(), "flames": 0})
-    save_db(db)
-    return {"status": "Pebble dropped"}
 
 @app.post("/api/chautara/interact")
 async def handle_interaction(request: InteractionRequest):
-    # RULE: Comments/Support MUST be positive. Negative replies are blocked.
+
     if request.type == "comment":
         prompt = f"""
-        Analyze this support message: "{request.content}".
-        If it is negative, hateful, or judgmental, respond 'REJECT'.
-        If it is supportive, kind, or empathetic, respond 'PASS'.
-        Respond ONLY with one word: 'PASS' or 'REJECT'.
-        """
+Analyze this support message: "{request.content}"
+
+If it is negative, hateful, or judgmental -> respond 'REJECT'.
+If it is supportive, kind, or empathetic -> respond 'PASS'.
+
+Respond ONLY with one word.
+"""
+
         completion = _get_groq_client().chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile"
         )
+
         if "REJECT" in completion.choices[0].message.content.upper():
-            raise HTTPException(status_code=400, detail="You are spreading hatred, can't send the message.")
+            raise HTTPException(
+                status_code=400,
+                detail="Only supportive messages allowed"
+            )
 
     return {"status": "Positive energy shared"}
+
 
 @app.post("/api/diyas")
 async def light_diya():
     db = get_db()
-    # Diya entry with timestamp for 24-hour logic
-    db["diyas"].append({"id": os.urandom(3).hex(), "expires_at": time.time() + 86400})
+
+    db["diyas"].append({
+        "id": os.urandom(3).hex(),
+        "expires_at": time.time() + 86400
+    })
+
     save_db(db)
     return {"status": "Diya lit"}
 
-# --- INCLUDE THE ORIGINAL ROUTERS (STAY SAFE) ---
-app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
-app.include_router(incident_router, prefix="/api", tags=["incidents"])
-app.include_router(stt_router, prefix="/stt", tags=["Speech To Text"])
-app.include_router(chat_router, prefix="/chat", tags=["Groq AI Chat"])
 
+# ===== AI LEGAL ASSISTANT =====
+
+from rag import load_pdfs, build_db, handle_query
+
+try:
+    load_pdfs()
+    build_db()
+except Exception:
+    pass
+
+with open("local_data.json") as f:
+    local_data = json.load(f)
+
+
+class ChatRequest(BaseModel):
+    query: str
+
+
+def search_local(query):
+    for key in local_data:
+        if key in query.lower():
+            return local_data[key]
+    return "I'm here to help you with legal rights."
+
+
+@app.post("/api/legal-chat")
+async def legal_chat(req: ChatRequest):
+    query = req.query
+
+    try:
+        result = handle_query(query)
+
+        if result["sources"]:
+            context = result["answer"]
+
+            prompt = f"""
+You are a Nepal Legal AI Assistant.
+
+STRICT RULES:
+- Always mention ACT name
+- Mention SECTION number if available
+- Give step-by-step actions
+- If crime involved -> explain FIR process
+- If user asks -> generate FIR format
+
+Context:
+{context}
+
+User Query:
+{query}
+"""
+
+            response = _get_groq_client().chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[{"role": "user", "content": prompt}],
+            )
+
+            return {
+                "reply": response.choices[0].message.content,
+                "sources": result["sources"]
+            }
+
+        else:
+            return {
+                "reply": result["answer"],
+                "sources": [],
+                "offline": True
+            }
+
+    except Exception:
+        return {
+            "reply": search_local(query),
+            "offline": True
+        }
+
+
+# --- ROUTERS ---
+app.include_router(auth_router, prefix="/api/auth")
+app.include_router(incident_router, prefix="/api")
+app.include_router(stt_router, prefix="/stt")
+app.include_router(chat_router, prefix="/chat")
+
+
+# --- RUN ---
 if __name__ == "__main__":
     import uvicorn
-    # Port 5000 is the target for PeerConnect.tsx
     uvicorn.run(app, host="127.0.0.1", port=5000)

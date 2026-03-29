@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { recordAgencyDecision, getJourneyDayCount, getTierFromJourney } from '@/lib/journeyStorage';
 import { clientLocalDateKey } from '@/lib/restorationApi';
 import AgencyTrail from '@/components/dashboard/AgencyTrail';
-import CaseTracker from '@/components/dashboard/CaseTracker';
+import { MOOD_HEX, moodHeroGradient } from '@/lib/moodTheme';
 
 // ─── Choice Banks ────────────────────────────────────────────────────────────
 const TIER1_CHOICES = (t: (en: string, ne: string) => string) => [
@@ -81,18 +81,13 @@ interface TodayScreenProps {
   moodColor?: string;
 }
 
-const MOOD_HEX: Record<string, string> = {
-  purple: '#7F77DD', amber: '#EF9F27', rose: '#ED93B1',
-  green: '#1D9E75', blue: '#378ADD', coral: '#D85A30',
-  yellow: '#FAC775', nearwhite: '#b0a89a',
-};
-
 const TodayScreen = ({ moodColor = 'green' }: TodayScreenProps) => {
   const { t } = useLanguage();
   const { restoration, restorationReady, saveRestoration } = useAuth();
   const today = clientLocalDateKey();
   // We use CSS transition with the parent context, but keeping accent fallback
-  const accent = MOOD_HEX[moodColor] ?? '#1D9E75';
+  const accent = MOOD_HEX[moodColor] ?? MOOD_HEX.green;
+  const heroBg = useMemo(() => moodHeroGradient(accent), [accent]);
   const tier = getTierFromJourney();
   const dayCount = getJourneyDayCount();
   const choices: Choice[] = TIER1_CHOICES(t);
@@ -148,7 +143,6 @@ const TodayScreen = ({ moodColor = 'green' }: TodayScreenProps) => {
   };
 
   // ─── Render ──────────────────────────────────────────────────────────────────
-  const heroBg = `linear-gradient(135deg, #fde8d8 0%, #faf0e6 40%, #e8f5e9 100%)`;
 
   if (!restorationReady) {
     return (
@@ -474,9 +468,6 @@ const TodayScreen = ({ moodColor = 'green' }: TodayScreenProps) => {
 
       <div style={{ marginTop: '2.5rem' }}>
         <AgencyTrail />
-      </div>
-      <div style={{ marginTop: '2.5rem' }}>
-        <CaseTracker />
       </div>
     </>
   );

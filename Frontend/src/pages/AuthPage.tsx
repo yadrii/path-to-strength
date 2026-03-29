@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Heart, User, Building2, ArrowRight, ShieldCheck, Sparkles, ArrowLeft, Loader2 } from 'lucide-react';
-import { NEPAL_DISTRICTS } from '@/data/helpResources';
+import { NEPAL_DISTRICTS, NEPAL_DISTRICT_SELECT_OTHER } from '@/data/helpResources';
 import {
   Select,
   SelectContent,
@@ -28,7 +28,8 @@ const AuthPage = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [district, setDistrict] = useState<string>('Kathmandu');
+  const [districtSelect, setDistrictSelect] = useState<string>('Kathmandu');
+  const [districtOther, setDistrictOther] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -41,7 +42,13 @@ const AuthPage = () => {
         const u = await login(email, password);
         navigate(u.role === 'ngo' ? '/ngo-dashboard' : '/dashboard');
       } else {
-        const u = await signup(name, email, password, role, role === 'user' ? district : undefined);
+        const resolvedDistrict =
+          role === 'user'
+            ? districtSelect === NEPAL_DISTRICT_SELECT_OTHER
+              ? districtOther.trim()
+              : districtSelect
+            : undefined;
+        const u = await signup(name, email, password, role, resolvedDistrict);
         navigate(u.role === 'ngo' ? '/ngo-dashboard' : '/dashboard');
       }
     } catch (err) {
@@ -84,7 +91,7 @@ const AuthPage = () => {
 
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-sage-light/90 px-4 py-2 text-sm font-medium text-sage-dark shadow-sm backdrop-blur-sm">
                 <Heart className="h-4 w-4 text-primary" />
-                {t('Sahara', 'सहारा')}
+                {t('Sangai', 'सङ्गै')}
               </div>
 
               <h1 className="font-display text-3xl font-bold leading-tight text-foreground md:text-4xl text-balance">
@@ -218,18 +225,36 @@ const AuthPage = () => {
                           'हामी तपाईंको ठ्याक्कै ठेगाना सोध्दैनौं — जिल्ला मात्र।',
                         )}
                       </p>
-                      <Select value={district} onValueChange={setDistrict}>
+                      <Select value={districtSelect} onValueChange={setDistrictSelect}>
                         <SelectTrigger className="h-11 w-full rounded-xl border-border/80 bg-background/80">
                           <SelectValue placeholder={t('Select district', 'जिल्ला छान्नुहोस्')} />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-[min(70vh,320px)]">
                           {NEPAL_DISTRICTS.map((d) => (
                             <SelectItem key={d} value={d}>
                               {d}
                             </SelectItem>
                           ))}
+                          <SelectItem value={NEPAL_DISTRICT_SELECT_OTHER}>
+                            {t('Other (type district name)', 'अन्य (जिल्लाको नाम लेख्नुहोस्)')}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
+                      {districtSelect === NEPAL_DISTRICT_SELECT_OTHER ? (
+                        <div className="space-y-2">
+                          <Label htmlFor="district-other" className="text-foreground">
+                            {t('District name', 'जिल्लाको नाम')}
+                          </Label>
+                          <Input
+                            id="district-other"
+                            value={districtOther}
+                            onChange={(e) => setDistrictOther(e.target.value)}
+                            placeholder={t('e.g. your municipality or spelling', 'उदा. तपाईंको जिल्ला')}
+                            className="h-11 rounded-xl border-border/80 bg-background/80"
+                            autoComplete="off"
+                          />
+                        </div>
+                      ) : null}
                     </div>
                   )}
                   <div className="space-y-2">
