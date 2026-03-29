@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
@@ -20,6 +21,8 @@ import {
   LEGAL_AUDIO_TRACKS,
   EMERGENCY_SMS_BODY,
   NEPAL_DISTRICTS,
+  NEPAL_DISTRICT_SELECT_OTHER,
+  NEPAL_DISTRICTS_77_SET,
   type Counselor,
   type CounselorLanguage,
   type CounselorMode,
@@ -90,13 +93,32 @@ const TherapistConnect = () => {
   const { t, language } = useLanguage();
   const { user, updateDistrict } = useAuth();
   const district = user?.district ?? 'Kathmandu';
+  const districtIsOfficial = NEPAL_DISTRICTS_77_SET.has(district);
+  /** True after user picks “Other” from the dropdown while still on an official district */
+  const [otherPicker, setOtherPicker] = useState(false);
+  const showOtherField = !districtIsOfficial || otherPicker;
+  const selectDistrictValue = showOtherField ? NEPAL_DISTRICT_SELECT_OTHER : district;
+  const [districtOtherDraft, setDistrictOtherDraft] = useState(
+    districtIsOfficial ? '' : district,
+  );
+
+  useEffect(() => {
+    if (user?.district && !NEPAL_DISTRICTS_77_SET.has(user.district)) {
+      setDistrictOtherDraft(user.district);
+      setOtherPicker(false);
+    }
+    if (user?.district && NEPAL_DISTRICTS_77_SET.has(user.district)) {
+      setDistrictOtherDraft('');
+      setOtherPicker(false);
+    }
+  }, [user?.district]);
 
   const [langPref, setLangPref] = useState<CounselorLanguage>('ne');
   const [womanPref, setWomanPref] = useState<'woman' | 'any'>('any');
   const [modePref, setModePref] = useState<CounselorMode>('voice');
 
   const sheltersForDistrict = useMemo(() => {
-    if (!district || district === 'Other') {
+    if (!district || !NEPAL_DISTRICTS_77_SET.has(district)) {
       return SHELTERS.filter((s) => ['Kathmandu', 'Lalitpur'].includes(s.district));
     }
     const exact = SHELTERS.filter((s) => s.district === district);
@@ -162,18 +184,46 @@ const TherapistConnect = () => {
               </div>
               <div className="w-full sm:w-56">
                 <Label className="sr-only">District</Label>
-                <Select value={district} onValueChange={updateDistrict}>
+                <Select
+                  value={selectDistrictValue}
+                  onValueChange={(v) => {
+                    if (v === NEPAL_DISTRICT_SELECT_OTHER) {
+                      setOtherPicker(true);
+                      return;
+                    }
+                    setOtherPicker(false);
+                    updateDistrict(v);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[min(70vh,320px)]">
                     {NEPAL_DISTRICTS.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>
                     ))}
+                    <SelectItem value={NEPAL_DISTRICT_SELECT_OTHER}>
+                      {t('Other (type district name)', 'अन्य (जिल्लाको नाम लेख्नुहोस्)')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
+                {showOtherField ? (
+                  <Input
+                    className="mt-2 h-10"
+                    value={districtOtherDraft}
+                    onChange={(e) => setDistrictOtherDraft(e.target.value)}
+                    onBlur={() => {
+                      const next = districtOtherDraft.trim();
+                      if (next) {
+                        updateDistrict(next);
+                        setOtherPicker(false);
+                      }
+                    }}
+                    placeholder={t('Your district name', 'तपाईंको जिल्ला')}
+                  />
+                ) : null}
               </div>
             </div>
           </CardHeader>
@@ -205,7 +255,7 @@ const TherapistConnect = () => {
                 <Building2 className="h-4 w-4 text-primary" />
                 {t('Shelters & safe spaces (your district)', 'आश्रय र सुरक्षित ठाउँ (तपाईंको जिल्ला)')}
               </h4>
-              {district === 'Other' && (
+              {!NEPAL_DISTRICTS_77_SET.has(district) && (
                 <p className="mb-2 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                   {t(
                     'Showing example locations in Kathmandu valley. Set a specific district when you can.',

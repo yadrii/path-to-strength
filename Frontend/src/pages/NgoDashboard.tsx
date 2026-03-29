@@ -9,6 +9,7 @@ import { Users, Shield, Calendar, Loader2, CheckCircle2, ClipboardList } from 'l
 import { Navigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { fetchIncidents, fetchIncidentStats, getTokenFromStorage, type IncidentDto } from '@/lib/incidentsApi';
+import { fetchRegisteredUsersForNgo, type NgoRegisteredUserRow } from '@/lib/ngoUsersApi';
 import { NgoCaseCard } from '@/components/dashboard/NgoCaseCard';
 
 const NgoDashboard = () => {
@@ -27,6 +28,25 @@ const NgoDashboard = () => {
   const [audience, setAudience] = useState<'all' | 'anonymous' | 'registered'>('all');
   const [caseStatus, setCaseStatus] = useState<'all' | 'pending' | 'resolved'>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [registeredUsers, setRegisteredUsers] = useState<NgoRegisteredUserRow[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+
+  const loadRegisteredUsers = useCallback(async () => {
+    const token = getTokenFromStorage();
+    if (!token) {
+      setRegisteredUsers([]);
+      return;
+    }
+    setUsersLoading(true);
+    try {
+      const rows = await fetchRegisteredUsersForNgo(token);
+      setRegisteredUsers(rows);
+    } catch {
+      setRegisteredUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     const token = getTokenFromStorage();
@@ -37,12 +57,20 @@ const NgoDashboard = () => {
     setError(null);
     setLoading(true);
     try {
-      const [list, s] = await Promise.all([
-        fetchIncidents(token, audience, caseStatus),
-        fetchIncidentStats(token),
-      ]);
+      const list = await fetchIncidents(token, audience, caseStatus);
       setCases(list);
-      setStats(s);
+      try {
+        const s = await fetchIncidentStats(token);
+        setStats(s);
+      } catch {
+        setStats({
+          pending_cases: 0,
+          resolved_cases: 0,
+          pending_anonymous: 0,
+          pending_registered: 0,
+          incidents_this_week: 0,
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t('Could not load dashboard', 'ड्यासबोर्ड लोड गर्न सकिएन'));
     } finally {
@@ -53,7 +81,8 @@ const NgoDashboard = () => {
   useEffect(() => {
     if (!authReady || !isAuthenticated || user?.role !== 'ngo') return;
     void loadDashboard();
-  }, [authReady, isAuthenticated, user?.role, loadDashboard]);
+    void loadRegisteredUsers();
+  }, [authReady, isAuthenticated, user?.role, loadDashboard, loadRegisteredUsers]);
 
   if (!authReady) {
     return <div className="min-h-screen bg-background" aria-busy="true" />;
@@ -122,6 +151,43 @@ const NgoDashboard = () => {
               </Card>
             ))}
           </div>
+
+          <Card className="mb-6 rounded-2xl border-border/60 bg-card/90 shadow-sm">
+            <CardContent className="space-y-3 p-4 md:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('Registered survivors', 'दर्ता प्रयोगकर्ता')}
+                </p>
+                {usersLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden /> : null}
+              </div>
+              {registeredUsers.length === 0 && !usersLoading ? (
+                <p className="text-sm text-muted-foreground">
+                  {t('No registered user accounts yet.', 'अझै कुनै दर्ता खाता छैन।')}
+                </p>
+              ) : (
+                <div className="max-h-56 overflow-auto rounded-xl border border-border/50">
+                  <table className="w-full text-left text-sm">
+                    <thead className="sticky top-0 bg-muted/80 text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
+                      <tr>
+                        <th className="px-3 py-2">{t('Name', 'नाम')}</th>
+                        <th className="px-3 py-2">{t('Email', 'इमेल')}</th>
+                        <th className="px-3 py-2">{t('District', 'जिल्ला')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {registeredUsers.map((u) => (
+                        <tr key={u._id} className="border-t border-border/40">
+                          <td className="px-3 py-2 font-medium text-foreground">{u.name}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{u.email}</td>
+                          <td className="px-3 py-2 text-foreground/90">{u.district?.trim() || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card className="mb-6 rounded-2xl border-border/60 bg-card/90 shadow-sm">
             <CardContent className="space-y-4 p-4 md:p-5">
