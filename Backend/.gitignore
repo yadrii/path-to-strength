@@ -4,4 +4,10 @@ env/
 __pycache__/
 *.pyc
 .env
+<<<<<<< HEAD
 node_modules/
+=======
+
+sahara_users.db
+
+>>>>>>> feat/ui-updated

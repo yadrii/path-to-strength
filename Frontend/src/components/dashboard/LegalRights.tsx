@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { BookOpen } from 'lucide-react';
+import MannKoKura from '@/components/dashboard/MannKoKura';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const LegalRights = () => {
   const { t } = useLanguage();
@@ -25,7 +27,7 @@ const LegalRights = () => {
     chatRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 🧠 ENHANCED Q&A + DEFINITIONS
+  // 🧠 Q&A DATABASE WITH DEFINITIONS
   const qaDB = {
     mental_health_access: {
       definition:
@@ -38,8 +40,7 @@ const LegalRights = () => {
         },
         {
           questions: ['who can access mental healthcare'],
-          answer:
-            'Every citizen has the right to access mental healthcare services.',
+          answer: 'Every citizen has the right to access mental healthcare services.',
         },
         {
           questions: ['is mental healthcare free'],
@@ -48,8 +49,7 @@ const LegalRights = () => {
         },
         {
           questions: ['can i be denied mental health treatment'],
-          answer:
-            'No, denying essential mental healthcare may violate your rights.',
+          answer: 'No, denying essential mental healthcare may violate your rights.',
         },
         {
           questions: ['cannot access mental health services'],
@@ -75,18 +75,15 @@ const LegalRights = () => {
         },
         {
           questions: ['workplace equality'],
-          answer:
-            'Yes, employers must treat individuals equally.',
+          answer: 'Yes, employers must treat individuals equally.',
         },
         {
           questions: ['face discrimination'],
-          answer:
-            'You can file a complaint or seek legal aid.',
+          answer: 'You can file a complaint or seek legal aid.',
         },
         {
           questions: ['everyone protected'],
-          answer:
-            'Yes, all individuals are entitled to equal protection.',
+          answer: 'Yes, all individuals are entitled to equal protection.',
         },
       ],
     },
@@ -102,13 +99,11 @@ const LegalRights = () => {
         },
         {
           questions: ['doctor share records'],
-          answer:
-            'No, doctors cannot share records without consent.',
+          answer: 'No, doctors cannot share records without consent.',
         },
         {
           questions: ['data leak'],
-          answer:
-            'You can file a complaint against the responsible party.',
+          answer: 'You can file a complaint against the responsible party.',
         },
         {
           questions: ['mental health data protected'],
@@ -117,8 +112,7 @@ const LegalRights = () => {
         },
         {
           questions: ['family access records'],
-          answer:
-            'No, consent is required unless legally mandated.',
+          answer: 'No, consent is required unless legally mandated.',
         },
       ],
     },
@@ -134,28 +128,24 @@ const LegalRights = () => {
         },
         {
           questions: ['where report domestic violence'],
-          answer:
-            'You can report it at the nearest police station.',
+          answer: 'You can report it at the nearest police station.',
         },
         {
           questions: ['proof needed'],
-          answer:
-            'Evidence helps, but you can file based on your statement.',
+          answer: 'Evidence helps, but you can file based on your statement.',
         },
         {
           questions: ['abuse without injury'],
-          answer:
-            'Yes, non-physical abuse is also recognized.',
+          answer: 'Yes, non-physical abuse is also recognized.',
         },
         {
           questions: ['after complaint'],
-          answer:
-            'Police may investigate and take legal action.',
+          answer: 'Police may investigate and take legal action.',
         },
         {
           questions: ['someone else report'],
           answer:
-            'Yes, a family member or concerned person can report.',
+            'Yes, a family member or concerned person can report on your behalf.',
         },
       ],
     },
@@ -166,28 +156,23 @@ const LegalRights = () => {
       qa: [
         {
           questions: ['what is protection order'],
-          answer:
-            'It prevents the abuser from contacting or harming you.',
+          answer: 'It prevents the abuser from contacting or harming you.',
         },
         {
           questions: ['how apply protection order'],
-          answer:
-            'You can apply through the court.',
+          answer: 'You can apply through the court.',
         },
         {
           questions: ['immediate protection'],
-          answer:
-            'Courts may issue temporary protection quickly.',
+          answer: 'Courts may issue temporary protection quickly.',
         },
         {
           questions: ['violate protection order'],
-          answer:
-            'Violating it leads to legal penalties.',
+          answer: 'Violating it leads to legal penalties.',
         },
         {
           questions: ['need lawyer'],
-          answer:
-            'Not mandatory; legal aid is available.',
+          answer: 'Not mandatory; legal aid is available.',
         },
       ],
     },
@@ -198,53 +183,45 @@ const LegalRights = () => {
       qa: [
         {
           questions: ['who eligible legal aid'],
-          answer:
-            'People who cannot afford legal services are eligible.',
+          answer: 'People who cannot afford legal services are eligible.',
         },
         {
           questions: ['how apply legal aid'],
-          answer:
-            'Apply through legal aid offices or NGOs.',
+          answer: 'Apply through legal aid offices or NGOs.',
         },
         {
           questions: ['services legal aid'],
-          answer:
-            'Includes legal advice and court representation.',
+          answer: 'Includes legal advice and court representation.',
         },
         {
           questions: ['legal aid domestic violence'],
-          answer:
-            'Yes, victims can access free support.',
+          answer: 'Yes, victims can access free support.',
         },
         {
           questions: ['documents required'],
-          answer:
-            'Proof of income may be required.',
+          answer: 'Proof of income may be required.',
         },
       ],
     },
   };
 
-  // 🧠 IMPROVED MATCHING ENGINE
+  // 🧠 RESPONSE ENGINE
   const getBotResponse = (query, right) => {
     if (!right) return 'Please select a legal topic first.';
 
     const q = query.toLowerCase();
     const data = qaDB[right.context];
 
-    // 1️⃣ Exact / semantic match
     for (const item of data.qa) {
       if (item.questions.some((ques) => q.includes(ques))) {
         return `${item.answer} (Legal Basis: ${right.law})`;
       }
     }
 
-    // 2️⃣ Definition fallback
     if (q.includes('what is') || q.includes('define')) {
       return `${data.definition} (Legal Basis: ${right.law})`;
     }
 
-    // 3️⃣ Keyword scoring (smarter fallback)
     let bestMatch = null;
     let maxScore = 0;
 
@@ -270,10 +247,7 @@ const LegalRights = () => {
     if (!input.trim()) return;
 
     const userMsg = { role: 'user', text: input };
-    const botMsg = {
-      role: 'bot',
-      text: getBotResponse(input, selectedRight),
-    };
+    const botMsg = { role: 'bot', text: getBotResponse(input, selectedRight) };
 
     setMessages((prev) => [...prev, userMsg, botMsg]);
     setInput('');
@@ -282,10 +256,7 @@ const LegalRights = () => {
   const handleCardClick = (right) => {
     setSelectedRight(right);
     setMessages([
-      {
-        role: 'bot',
-        text: `You selected "${right.title}". Ask your question.`,
-      },
+      { role: 'bot', text: `You selected "${right.title}". Ask your question.` },
     ]);
     setOpen(true);
   };
@@ -330,16 +301,33 @@ const LegalRights = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Know Your Legal Rights</h2>
+    <div className="space-y-8">
+      <div className="border-b border-border/60 pb-10">
+        <MannKoKura variant="embedded" />
+      </div>
+
+      <PageHeader
+        eyebrow={t('Legal', 'कानुनी')}
+        title={t('Know Your Rights', 'आफ्ना अधिकार जान्नुहोस्')}
+        description={t(
+          'In plain language, not legal jargon. Knowledge is power.',
+          'सरल भाषामा, कानुनी शब्दावली होइन। ज्ञान शक्ति हो।'
+        )}
+      />
 
       <div className="space-y-4">
         {rights.map((right, i) => (
-          <Card key={i} onClick={() => handleCardClick(right)} className="cursor-pointer">
-            <CardContent className="p-5 flex gap-3">
-              <BookOpen className="h-5 w-5 text-primary" />
+          <Card
+            key={i}
+            onClick={() => handleCardClick(right)}
+            className="cursor-pointer rounded-2xl border-border/50 shadow-sm transition-shadow hover:shadow-md"
+          >
+            <CardContent className="p-5 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-sage-light flex items-center justify-center mt-0.5">
+                <BookOpen className="h-4 w-4 text-primary" />
+              </div>
               <div>
-                <h3 className="font-semibold">{right.title}</h3>
+                <h3 className="font-semibold text-foreground mb-1">{right.title}</h3>
                 <p className="text-sm text-muted-foreground">{right.desc}</p>
                 <p className="text-xs text-primary mt-2">{right.law}</p>
               </div>
@@ -359,12 +347,10 @@ const LegalRights = () => {
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`flex ${
-                  msg.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm shadow-sm ${
+                  className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm shadow-sm break-words ${
                     msg.role === 'user'
                       ? 'bg-primary text-white rounded-br-md'
                       : 'bg-white text-gray-800 border rounded-bl-md'
@@ -377,8 +363,12 @@ const LegalRights = () => {
             <div ref={chatRef} />
           </div>
 
-          <div className="flex gap-2">
-            <Input value={input} onChange={(e) => setInput(e.target.value)} />
+          <div className="flex gap-2 mt-3">
+            <Input
+              placeholder="Ask your question..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+            />
             <Button onClick={handleSend}>Send</Button>
           </div>
         </DialogContent>

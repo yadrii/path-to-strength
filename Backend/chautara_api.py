@@ -25,7 +25,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+_groq_client = None
+
+
+def _get_groq() -> Groq | None:
+    global _groq_client
+    key = os.environ.get("GROQ_API_KEY") or os.environ.get("VITE_GROQ_API_KEY")
+    if not key:
+        return None
+    if _groq_client is None:
+        _groq_client = Groq(api_key=key)
+    return _groq_client
+
+
 DB_PATH = "chautara_sanctuary.db"
 
 embedder = SentenceTransformer('all-MiniLM-L6-v2')
@@ -103,6 +115,7 @@ seed_data()
 class PostReq(BaseModel):
     content: str
 
+
 class CommentReq(BaseModel):
     story_id: str
     content: str
@@ -120,8 +133,12 @@ def contains_hate(text):
 
 
 def classify(text):
+    groq = _get_groq()
+    if not groq:
+        return "NEGATIVE"
+
     try:
-        res = client.chat.completions.create(
+        res = groq.chat.completions.create(
             messages=[
                 {"role": "system", "content": "Return POSITIVE or NEGATIVE"},
                 {"role": "user", "content": text}
@@ -177,8 +194,12 @@ Example:
 ["reply1", "reply2", "reply3"]
 """
 
+    groq = _get_groq()
+    if not groq:
+        return
+
     try:
-        completion = client.chat.completions.create(
+        completion = groq.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile",
             temperature=0.7
