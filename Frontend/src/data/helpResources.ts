@@ -201,17 +201,9 @@ export const LEGAL_AUDIO_TRACKS: LegalAudioTrack[] = [
 export const EMERGENCY_SMS_BODY =
   'कृपया मलाई सम्पर्क गर्नुहोस्। मलाई कसैसँग कुरा गर्नु छ।';
 
-export const NEPAL_DISTRICTS = [
-  'Kathmandu',
-  'Lalitpur',
-  'Bhaktapur',
-  'Kaski',
-  'Morang',
-  'Rupandehi',
-  'Chitwan',
-  'Banke',
-  'Dhanusha',
-  'Sunsari',
-  'Kailali',
-  'Other',
-] as const;
+export {
+  NEPAL_DISTRICTS_77 as NEPAL_DISTRICTS,
+  NEPAL_DISTRICT_SELECT_OTHER,
+  NEPAL_DISTRICTS_77_SET,
+  isOfficialNepalDistrict,
+} from '@/data/nepalDistricts';

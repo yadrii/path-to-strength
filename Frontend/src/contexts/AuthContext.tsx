@@ -45,9 +45,110 @@ interface AuthContextType {
   }) => Promise<void>;
 }
 
+const SIGNUP_MAX_NAME_LENGTH = 100;
+const SIGNUP_MAX_EMAIL_LENGTH = 254;
+const SIGNUP_MIN_PASSWORD_LENGTH = 8;
+/** bcrypt only hashes the first 72 bytes; Firebase also enforces practical limits */
+const SIGNUP_MAX_PASSWORD_LENGTH = 72;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateSignupPassword(password: string): void {
+  if (!password) {
+    throw new Error('Password is required');
+  }
+  if (password.length < SIGNUP_MIN_PASSWORD_LENGTH) {
+    throw new Error('Password is too short');
+  }
+  if (password.length > SIGNUP_MAX_PASSWORD_LENGTH) {
+    throw new Error('Password too long');
+  }
+  if (!/[A-Z]/.test(password)) {
+    throw new Error('Password must contain at least one capital letter');
+  }
+  if (!/[0-9]/.test(password)) {
+    throw new Error('Password must contain at least one number');
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    throw new Error('Password must contain at least one special character');
+  }
+}
+
+function validateSignupInput(
+  name: string,
+  email: string,
+  password: string,
+  role: 'user' | 'ngo',
+  district?: string,
+): void {
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    throw new Error('Name is required');
+  }
+  if (trimmedName.length > SIGNUP_MAX_NAME_LENGTH) {
+    throw new Error('Name is too long');
+  }
+
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) {
+    throw new Error('Email is required');
+  }
+  if (trimmedEmail.length > SIGNUP_MAX_EMAIL_LENGTH) {
+    throw new Error('Email is too long');
+  }
+  if (!trimmedEmail.includes('@')) {
+    throw new Error('Email must contain @ symbol');
+  }
+  if (!EMAIL_RE.test(trimmedEmail)) {
+    throw new Error('Please enter a valid email');
+  }
+
+  validateSignupPassword(password);
+
+  if (role === 'user') {
+    const d = district?.trim();
+    if (!d) {
+      throw new Error('Please select your district');
+    }
+    if (d.length < 2) {
+      throw new Error('District name is too short');
+    }
+    if (d.length > 120) {
+      throw new Error('District name is too long');
+    }
+  }
+}
+
+function pickApiData<T>(json: unknown): T {
+  if (json && typeof json === 'object' && json !== null && 'data' in json) {
+    return (json as { data: T }).data;
+  }
+  return json as T;
+}
+
+function normalizeAuthUser(raw: Record<string, unknown>): AuthUser {
+  const id = String(raw.id ?? raw._id ?? '');
+  return {
+    id,
+    name: String(raw.name ?? ''),
+    email: String(raw.email ?? ''),
+    role: raw.role === 'ngo' ? 'ngo' : 'user',
+    district: typeof raw.district === 'string' && raw.district.trim() ? raw.district.trim() : undefined,
+  };
+}
+
+function isLikelyFetchNetworkError(e: unknown): boolean {
+  if (e instanceof TypeError) return true;
+  if (e instanceof Error && /failed to fetch/i.test(e.message)) return true;
+  return false;
+}
+
 async function readError(res: Response): Promise<string> {
   try {
-    const j = (await res.json()) as { detail?: unknown };
+    const j = (await res.json()) as { detail?: unknown; message?: string };
+    if (typeof j.message === 'string' && j.message.trim()) {
+      return j.message;
+    }
     const d = j.detail;
     if (typeof d === 'string') return d;
     if (Array.isArray(d))
@@ -202,10 +303,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ email, password }),
       });
       if (!res.ok) throw new Error(await readError(res));
-      const data = (await res.json()) as { access_token: string; user: AuthUser };
-      persistSession(data.access_token, data.user);
-      await hydrateRestoration(data.access_token);
-      return data.user;
+      const body = await res.json();
+      const payload = pickApiData<{
+        user?: Record<string, unknown>;
+        accessToken?: string;
+        access_token?: string;
+      }>(body);
+      const token = payload.accessToken ?? payload.access_token;
+      const userRaw = payload.user;
+      if (!token || !userRaw || typeof userRaw !== 'object') {
+        throw new Error('Invalid server response');
+      }
+      const user = normalizeAuthUser(userRaw as Record<string, unknown>);
+      persistSession(token, user);
+      await hydrateRestoration(token);
+      return user;
     },
     [persistSession, hydrateRestoration],
   );
@@ -218,23 +330,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: 'user' | 'ngo',
       district?: string,
     ): Promise<AuthUser> => {
+      validateSignupInput(name, email, password, role, district);
+
       const base = getMainApiBase();
-      const res = await fetch(base + "/api/auth/register", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          role,
-          district: role === 'user' ? district : undefined,
-        }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(base + "/api/auth/register", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.trim(),
+            password,
+            role,
+            district: role === 'user' ? district?.trim() : undefined,
+          }),
+        });
+      } catch (e) {
+        if (isLikelyFetchNetworkError(e)) {
+          throw new Error('Unable to connect to the server. Please try again.');
+        }
+        throw e;
+      }
       if (!res.ok) throw new Error(await readError(res));
-      const data = (await res.json()) as { access_token: string; user: AuthUser };
-      persistSession(data.access_token, data.user);
-      await hydrateRestoration(data.access_token);
-      return data.user;
+      const body = await res.json();
+      const payload = pickApiData<{
+        user?: Record<string, unknown>;
+        accessToken?: string;
+        access_token?: string;
+      }>(body);
+      const token = payload.accessToken ?? payload.access_token;
+      const userRaw = payload.user;
+      if (!token || !userRaw || typeof userRaw !== 'object') {
+        throw new Error('Invalid server response');
+      }
+      const user = normalizeAuthUser(userRaw as Record<string, unknown>);
+      persistSession(token, user);
+      await hydrateRestoration(token);
+      return user;
     },
     [persistSession, hydrateRestoration],
   );

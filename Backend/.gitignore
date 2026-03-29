@@ -7,3 +7,5 @@ __pycache__/
 
 sahara_users.db
 
+node_modules/
+dist/
