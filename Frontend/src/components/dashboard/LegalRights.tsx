@@ -17,11 +17,11 @@ const LegalRights = () => {
   const { t } = useLanguage();
 
   const [open, setOpen] = useState(false);
-  const [selectedRight, setSelectedRight] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [selectedRight, setSelectedRight] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
 
-  const chatRef = useRef(null);
+  const chatRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     chatRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -31,182 +31,292 @@ const LegalRights = () => {
   const qaDB = {
     mental_health_access: {
       definition:
-        'Mental healthcare includes services for diagnosis, treatment, and prevention of mental health conditions.',
+        'The right to mental healthcare means every person can access mental health services like counseling, therapy, and treatment. These services should be available, affordable, and provided without discrimination.',
       qa: [
         {
-          questions: ['what does the right to mental healthcare include'],
+          questions: [
+            'what is mental healthcare',
+            'define mental healthcare',
+            'right to mental healthcare meaning',
+            'explain mental health rights',
+          ],
           answer:
-            'It includes access to mental health services, treatment, and support without discrimination.',
+            'It means you have the right to access mental health services like counseling, therapy, and treatment without discrimination.',
         },
         {
-          questions: ['who can access mental healthcare'],
-          answer: 'Every citizen has the right to access mental healthcare services.',
-        },
-        {
-          questions: ['is mental healthcare free'],
+          questions: [
+            'free mental health treatment',
+            'is therapy free',
+            'cost of mental healthcare',
+            'afford therapy',
+          ],
           answer:
-            'Basic healthcare services should be accessible and affordable.',
+            'Basic mental health services are often free or low-cost in government hospitals and NGOs.',
         },
         {
-          questions: ['can i be denied mental health treatment'],
-          answer: 'No, denying essential mental healthcare may violate your rights.',
-        },
-        {
-          questions: ['cannot access mental health services'],
+          questions: [
+            'where to go for mental help',
+            'i feel depressed where to go',
+            'mental health support',
+            'need counseling help',
+          ],
           answer:
-            'You can approach government hospitals, NGOs, or file a complaint.',
+            'You can visit government hospitals, mental health centers, NGOs, or contact helplines for support.',
+        },
+        {
+          questions: [
+            'can i go without family knowing',
+            'private counseling',
+            'confidential therapy',
+          ],
+          answer:
+            'Yes, you have the right to seek mental health care privately without informing your family.',
+        },
+        {
+          questions: [
+            'can i stop treatment',
+            'refuse therapy',
+            'leave treatment',
+          ],
+          answer:
+            'Yes, you have the right to consent to or refuse treatment at any time.',
+        },
+        {
+          questions: [
+            'suicidal thoughts help',
+            'i feel like ending life',
+            'urgent mental help',
+          ],
+          answer:
+            'Please seek immediate help from a helpline, hospital, or trusted person. You are not alone and support is available.',
         },
       ],
     },
 
     mental_health_dignity: {
       definition:
-        'Equality ensures all individuals are treated fairly without discrimination.',
+        'The right to equality means all individuals are treated equally under the law without discrimination based on gender, caste, religion, identity, or background.',
       qa: [
         {
-          questions: ['what does equality mean'],
+          questions: [
+            'what is equality',
+            'define equality',
+            'equal rights meaning',
+          ],
           answer:
-            'It ensures equal protection under the law and prohibits discrimination.',
+            'Equality means everyone is treated fairly and equally under the law without discrimination.',
         },
         {
-          questions: ['discrimination mental health'],
+          questions: [
+            'what is discrimination',
+            'define discrimination',
+            'unfair treatment meaning',
+          ],
           answer:
-            'No, discrimination based on mental health is a violation.',
+            'Discrimination means treating someone unfairly because of their gender, caste, religion, or identity.',
         },
         {
-          questions: ['workplace equality'],
-          answer: 'Yes, employers must treat individuals equally.',
+          questions: [
+            'treated unfairly at work',
+            'workplace discrimination',
+            'job inequality',
+          ],
+          answer:
+            'You have the right to equal treatment at work. You can file a complaint or seek legal help.',
         },
         {
-          questions: ['face discrimination'],
-          answer: 'You can file a complaint or seek legal aid.',
+          questions: [
+            'caste discrimination',
+            'gender discrimination',
+            'religion discrimination',
+          ],
+          answer:
+            'Discrimination based on caste, gender, or religion is illegal and punishable.',
         },
         {
-          questions: ['everyone protected'],
-          answer: 'Yes, all individuals are entitled to equal protection.',
+          questions: [
+            'lgbt rights nepal',
+            'are lgbt protected',
+            'sexual identity rights',
+          ],
+          answer:
+            'Yes, Nepal recognizes and protects LGBTQ+ rights under equality laws.',
+        },
+        {
+          questions: [
+            'family treats me unfairly',
+            'unequal treatment at home',
+          ],
+          answer:
+            'You can seek support or legal help if you are treated unfairly even within your family.',
         },
       ],
     },
 
     mental_health_privacy: {
       definition:
-        'Confidentiality means your medical and personal data must remain private.',
+        'Confidentiality means your personal and medical information must be kept private and cannot be shared without your consent, except in legal or emergency situations.',
       qa: [
         {
-          questions: ['what is confidentiality'],
+          questions: [
+            'what is confidentiality',
+            'define confidentiality',
+            'privacy meaning',
+          ],
           answer:
-            'Your personal and medical information must be kept private.',
+            'Confidentiality means your personal and medical information must remain private.',
         },
         {
-          questions: ['doctor share records'],
-          answer: 'No, doctors cannot share records without consent.',
-        },
-        {
-          questions: ['data leak'],
-          answer: 'You can file a complaint against the responsible party.',
-        },
-        {
-          questions: ['mental health data protected'],
+          questions: [
+            'can doctor share my data',
+            'doctor share records',
+            'medical privacy',
+          ],
           answer:
-            'Yes, mental health data is protected like any medical data.',
+            'No, doctors cannot share your information without your permission unless required by law.',
         },
         {
-          questions: ['family access records'],
-          answer: 'No, consent is required unless legally mandated.',
+          questions: [
+            'family access records',
+            'can parents see my data',
+          ],
+          answer:
+            'No, your family cannot access your medical records without your consent.',
+        },
+        {
+          questions: ['data leak what to do', 'privacy violation'],
+          answer:
+            'You can file a complaint and take legal action if your data is leaked.',
+        },
+        {
+          questions: ['online counseling safe', 'is therapy private online'],
+          answer:
+            'Yes, trusted platforms ensure confidentiality and data protection.',
+        },
+        {
+          questions: ['can i stay anonymous', 'anonymous help'],
+          answer:
+            'Yes, many services allow you to seek help anonymously.',
         },
       ],
     },
 
     dv_report: {
       definition:
-        'Domestic violence includes physical, emotional, sexual, or economic abuse within a household.',
+        'Domestic violence includes physical, emotional, sexual, or economic abuse within a household or relationship.',
       qa: [
         {
-          questions: ['what is domestic violence', 'define domestic violence'],
+          questions: [
+            'what is domestic violence',
+            'define abuse at home',
+          ],
           answer:
             'Domestic violence includes physical, emotional, sexual, or economic abuse within a household.',
         },
         {
-          questions: ['where report domestic violence'],
-          answer: 'You can report it at the nearest police station.',
-        },
-        {
-          questions: ['proof needed'],
-          answer: 'Evidence helps, but you can file based on your statement.',
-        },
-        {
-          questions: ['abuse without injury'],
-          answer: 'Yes, non-physical abuse is also recognized.',
-        },
-        {
-          questions: ['after complaint'],
-          answer: 'Police may investigate and take legal action.',
-        },
-        {
-          questions: ['someone else report'],
+          questions: [
+            'how to report abuse',
+            'where report domestic violence',
+            'file complaint abuse',
+          ],
           answer:
-            'Yes, a family member or concerned person can report on your behalf.',
+            'You can report domestic violence at any police station.',
+        },
+        {
+          questions: [
+            'emotional abuse valid',
+            'no physical injury abuse',
+          ],
+          answer:
+            'Yes, emotional and non-physical abuse are also recognized under the law.',
+        },
+        {
+          questions: ['proof required', 'evidence needed'],
+          answer:
+            'Evidence like messages or photos helps, but you can still file a complaint without it.',
+        },
+        {
+          questions: ['someone else report', 'can friend report'],
+          answer:
+            'Yes, someone else can report on your behalf.',
+        },
+        {
+          questions: ['after complaint what happens', 'police action after report'],
+          answer:
+            'Police may investigate and take legal action to protect you.',
         },
       ],
     },
 
     dv_protection: {
       definition:
-        'A protection order is a legal order preventing an abuser from contacting or harming a victim.',
+        'A protection order is a legal order issued by a court to prevent an abuser from contacting or harming the victim.',
       qa: [
         {
-          questions: ['what is protection order'],
-          answer: 'It prevents the abuser from contacting or harming you.',
+          questions: [
+            'what is protection order',
+            'restraining order meaning',
+          ],
+          answer:
+            'It is a legal order that prevents the abuser from contacting or harming you.',
         },
         {
-          questions: ['how apply protection order'],
-          answer: 'You can apply through the court.',
+          questions: ['how to apply protection order', 'get court protection'],
+          answer: 'You can apply for a protection order through the court.',
         },
         {
-          questions: ['immediate protection'],
-          answer: 'Courts may issue temporary protection quickly.',
+          questions: ['need lawyer protection order'],
+          answer:
+            'A lawyer is not required, and free legal aid is available.',
         },
         {
           questions: ['violate protection order'],
-          answer: 'Violating it leads to legal penalties.',
+          answer:
+            'If violated, the abuser can face legal penalties or arrest.',
         },
         {
-          questions: ['need lawyer'],
-          answer: 'Not mandatory; legal aid is available.',
+          questions: ['immediate protection'],
+          answer:
+            'Courts can issue temporary protection quickly in urgent cases.',
         },
       ],
     },
 
     legal_aid: {
       definition:
-        'Legal aid provides free legal services to individuals who cannot afford them.',
+        'Free legal aid means legal services are provided at no cost to people who cannot afford a lawyer.',
       qa: [
         {
-          questions: ['who eligible legal aid'],
-          answer: 'People who cannot afford legal services are eligible.',
+          questions: ['what is legal aid', 'free lawyer meaning'],
+          answer:
+            'Legal aid provides free legal services to those who cannot afford a lawyer.',
         },
         {
-          questions: ['how apply legal aid'],
-          answer: 'Apply through legal aid offices or NGOs.',
+          questions: ['who eligible legal aid', 'who gets free lawyer'],
+          answer:
+            'Low-income individuals and vulnerable groups are eligible.',
         },
         {
-          questions: ['services legal aid'],
-          answer: 'Includes legal advice and court representation.',
+          questions: ['how apply legal aid', 'get free lawyer'],
+          answer:
+            'You can apply through legal aid offices or NGOs.',
         },
         {
           questions: ['legal aid domestic violence'],
-          answer: 'Yes, victims can access free support.',
+          answer:
+            'Yes, domestic violence victims can receive free legal support.',
         },
         {
-          questions: ['documents required'],
-          answer: 'Proof of income may be required.',
+          questions: ['documents needed legal aid'],
+          answer:
+            'Basic identification and proof of income may be required.',
         },
       ],
     },
   };
 
   // 🧠 RESPONSE ENGINE
-  const getBotResponse = (query, right) => {
+  const getBotResponse = (query: string, right: any) => {
     if (!right) return 'Please select a legal topic first.';
 
     const q = query.toLowerCase();
@@ -253,7 +363,7 @@ const LegalRights = () => {
     setInput('');
   };
 
-  const handleCardClick = (right) => {
+  const handleCardClick = (right: any) => {
     setSelectedRight(right);
     setMessages([
       { role: 'bot', text: `You selected "${right.title}". Ask your question.` },
@@ -342,7 +452,6 @@ const LegalRights = () => {
             <DialogTitle>{selectedRight?.title}</DialogTitle>
           </DialogHeader>
 
-          {/* 💬 CHAT UI */}
           <div className="h-64 overflow-y-auto space-y-3 border p-3 bg-muted/30 rounded-lg">
             {messages.map((msg, i) => (
               <div
