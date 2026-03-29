@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-import random
+import sqlite3
 import time
 
 from fastapi import FastAPI, HTTPException
@@ -15,11 +15,13 @@ from speech_to_text import router as stt_router
 from chat import router as chat_router
 from auth_routes import router as auth_router, init_users_db
 from incident_routes import router as incident_router, init_incidents_db
+from chautara_db import DB_PATH as CHAUTARA_SQLITE_PATH, init_chautara_sanctuary_db
 
 # Load environment variables
 load_dotenv()
 init_users_db()
 init_incidents_db()
+init_chautara_sanctuary_db()
 
 from chautara_api import router as chautara_router
 
@@ -107,8 +109,7 @@ class InteractionRequest(BaseModel):
     type: str
 
 
-# --- DB + GROQ ---
-CHAUTARA_DB = "chautari_sanctuary.json"
+# --- GROQ ---
 _groq_client = None
 
 
@@ -120,26 +121,6 @@ def _get_groq_client() -> Groq:
     if _groq_client is None:
         _groq_client = Groq(api_key=key)
     return _groq_client
-
-
-def get_db():
-    if not os.path.exists(CHAUTARA_DB):
-        seed = {
-            "pebbles": [],
-            "diyas": [],
-            "stories": []
-        }
-        with open(CHAUTARA_DB, "w", encoding="utf-8") as f:
-            json.dump(seed, f, indent=2)
-        return seed
-
-    with open(CHAUTARA_DB, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_db(db):
-    with open(CHAUTARA_DB, "w", encoding="utf-8") as f:
-        json.dump(db, f, indent=2, ensure_ascii=False)
 
 
 # --- ROUTES ---
@@ -177,14 +158,17 @@ Respond ONLY with one word.
 
 @app.post("/api/diyas")
 async def light_diya():
-    db = get_db()
-
-    db["diyas"].append({
-        "id": os.urandom(3).hex(),
-        "expires_at": time.time() + 86400
-    })
-
-    save_db(db)
+    did = os.urandom(3).hex()
+    exp = time.time() + 86400
+    conn = sqlite3.connect(CHAUTARA_SQLITE_PATH)
+    try:
+        conn.execute(
+            "INSERT INTO sanctuary_diyas (id, expires_at) VALUES (?, ?)",
+            (did, exp),
+        )
+        conn.commit()
+    finally:
+        conn.close()
     return {"status": "Diya lit"}
 
 

@@ -10,3 +10,5 @@ pydantic
 python-dotenv
 sentence-transformers
 torch
+pdfminer.six
+scikit-learn

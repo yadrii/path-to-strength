@@ -18,6 +18,9 @@ from groq import Groq
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer, util
 
+from chautara_db import DB_PATH, init_chautara_sanctuary_db, seed_chautara_stories_if_empty
+
+# ---------- INIT ----------
 load_dotenv()
 
 router = APIRouter(tags=["chautara"])
@@ -35,81 +38,12 @@ def _get_groq() -> Groq | None:
     return _groq_client
 
 
-DB_PATH = "chautara_sanctuary.db"
-
-embedder = SentenceTransformer("all-MiniLM-L6-v2")
+embedder = SentenceTransformer('all-MiniLM-L6-v2')
 
 
-# ---------- DATABASE ----------
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-    CREATE TABLE IF NOT EXISTS stories (
-        id TEXT PRIMARY KEY,
-        content TEXT,
-        author TEXT,
-        diyas INTEGER,
-        timestamp REAL,
-        type TEXT
-    )
-    """
-    )
-
-    cursor.execute(
-        """
-    CREATE TABLE IF NOT EXISTS comments (
-        id TEXT PRIMARY KEY,
-        story_id TEXT,
-        content TEXT,
-        author TEXT
-    )
-    """
-    )
-
-    conn.commit()
-    conn.close()
-
-
-def seed_data():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT COUNT(*) FROM stories")
-    count = cursor.fetchone()[0]
-
-    if count > 10:
-        conn.close()
-        return
-
-    samples = [
-        "My husband drinks heavily and becomes aggressive",
-        "My court case keeps getting delayed",
-        "I feel completely alone",
-        "My in-laws pressure me constantly",
-        "I cannot sleep due to stress",
-        "I feel scared about my future",
-        "मलाई धेरै डर लागिरहेको छ",
-        "म मानसिक रूपमा थाकेको छु",
-        "मलाई कसैले बुझ्दैन",
-    ]
-
-    for text in samples * 5:
-        cursor.execute(
-            "INSERT INTO stories VALUES (?, ?, ?, ?, ?, ?)",
-            (os.urandom(4).hex(), text, "Seed", 0, time.time(), "seed"),
-        )
-
-    conn.commit()
-    conn.close()
-    print("✅ DATABASE SEEDED")
-
-
-# ---------- STARTUP (import side effects) ----------
-init_db()
-seed_data()
+# ---------- STARTUP ----------
+init_chautara_sanctuary_db()
+seed_chautara_stories_if_empty()
 
 
 # ---------- MODELS ----------
@@ -272,7 +206,10 @@ async def post_story(req: PostReq):
         cursor = conn.cursor()
 
         cursor.execute(
-            "INSERT INTO stories VALUES (?, ?, ?, ?, ?, ?)",
+            """
+            INSERT INTO stories (id, content, author, diyas, timestamp, type)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
             (sid, req.content, "Anonymous Sister", 0, time.time(), "pebble"),
         )
 
