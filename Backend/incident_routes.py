@@ -77,11 +77,11 @@ def init_incidents_db():
         )
         """
     )
+    _migrate_incidents_columns(conn)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_incidents_user ON incidents(user_id)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_incidents_created ON incidents(created_at DESC)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status)")
     conn.commit()
-    _migrate_incidents_columns(conn)
     conn.close()
 
 
