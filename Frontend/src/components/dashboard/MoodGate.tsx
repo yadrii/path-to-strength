@@ -42,16 +42,9 @@ const MoodGate = ({ onComplete }: MoodGateProps) => {
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
     
-    // Quick RGB to HSL conversion (normalized to percentages for standard HSL CSS variables if needed)
-    // For simplicity, we can pass the hex as the primary color. But we also need a muted background tint.
-    // Creating a very light version for the background:
-    const root = document.documentElement;
-    root.style.setProperty('--primary', color.hex);
-    root.style.setProperty('--primary-transparent', `${color.hex}33`); // 20% opacity
-    root.style.setProperty('--card', '#ffffff');
-    root.style.setProperty('--background', '#faf8f5');
-    // We also set a specific tracking variable so other components can pick up the mood colour
-    root.style.setProperty('--mood-accent', color.hex);
+    // Only set accent as a raw color. Do not overwrite --primary / --card / --background: the app uses
+    // hsl(var(--primary)) etc., so hex values there break buttons and surfaces after leaving the dashboard.
+    document.documentElement.style.setProperty('--mood-accent', color.hex);
 
     // After expand + reverse shrink completes
     setTimeout(() => {
@@ -120,53 +113,25 @@ const MoodGate = ({ onComplete }: MoodGateProps) => {
         />
       )}
 
-      {/* Main MoodGate container */}
-      <div 
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: '#faf8f5',
-          zIndex: 50,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#faf8f5] px-4 transition-opacity duration-1000"
+        style={{ opacity: spillCoord ? 0 : 1 }}
       >
-        <h1 
-          style={{
-            fontFamily: 'Playfair Display, serif',
-            fontSize: '2.5rem',
-            color: '#2d2520',
-            marginBottom: '4rem',
-            textAlign: 'center',
-            padding: '0 2rem'
-          }}
-        >
+        <h1 className="mb-8 max-w-xl px-1 text-center font-display text-2xl font-bold leading-tight text-[#2d2520] xs:text-3xl sm:mb-12 sm:text-4xl md:mb-14 md:text-[2.5rem]">
           {t('What color is your mind today?', 'आज तपाईंको मन कुन रङजस्तो छ?')}
         </h1>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '2rem',
-          maxWidth: '600px'
-        }}>
+        <div className="grid w-full max-w-[600px] grid-cols-4 justify-items-center gap-4 xs:gap-6 sm:gap-8">
           {COLORS.map((color, index) => (
             <button
               key={color.value}
+              type="button"
               onClick={(e) => handleSelect(e, color)}
-              className={`breathing-circle ${selected === color.value ? 'selected' : ''}`}
+              className={`breathing-circle h-14 w-14 cursor-pointer rounded-full border-0 outline-none ring-2 ring-white/50 transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 xs:h-[4.25rem] xs:w-[4.25rem] sm:h-[72px] sm:w-[72px] ${selected === color.value ? 'selected' : ''}`}
               style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '50%',
                 backgroundColor: color.hex,
-                border: 'none',
-                cursor: 'pointer',
                 animationDelay: `${index * 0.3}s`,
                 boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
-                outline: 'none',
               }}
               aria-label={color.value}
             />

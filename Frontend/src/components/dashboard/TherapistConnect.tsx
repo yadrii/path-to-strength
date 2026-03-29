@@ -36,6 +36,7 @@ import {
   UserRound,
   Volume2,
 } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const WEEK_LABELS_NE = ['सोम', 'मङ्गल', 'बुध', 'बिहि', 'शुक्र', 'शनि', 'आइत'];
 
@@ -121,17 +122,14 @@ const TherapistConnect = () => {
 
   return (
     <div className="space-y-8 font-sans">
-      <div>
-        <h2 className="font-display text-2xl font-bold text-foreground">
-          {t('Resources & help', 'स्रोत र सहयोग')}
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t(
-            'Three levels of support — immediate, matched counseling, and legal audio.',
-            'तीन तहको सहयोग — तत्काल, मिल्दो परामर्श, र कानुनी अडियो।',
-          )}
-        </p>
-      </div>
+      <PageHeader
+        eyebrow={t('Support', 'सहयोग')}
+        title={t('Resources & help', 'स्रोत र सहयोग')}
+        description={t(
+          'Three levels of support — immediate, matched counseling, and legal audio.',
+          'तीन तहको सहयोग — तत्काल, मिल्दो परामर्श, र कानुनी अडियो।',
+        )}
+      />
 
       {/* Tier 1 — Immediate */}
       <section className="space-y-3">
@@ -150,7 +148,7 @@ const TherapistConnect = () => {
           )}
         </p>
 
-        <Card className="border-border/80 bg-card/80 shadow-sm">
+        <Card className="rounded-2xl border-border/80 bg-card/90 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>

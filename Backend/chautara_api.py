@@ -21,7 +21,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+_groq_client = None
+
+
+def _get_groq() -> Groq | None:
+    global _groq_client
+    key = os.environ.get("GROQ_API_KEY") or os.environ.get("VITE_GROQ_API_KEY")
+    if not key:
+        return None
+    if _groq_client is None:
+        _groq_client = Groq(api_key=key)
+    return _groq_client
+
+
 DB_PATH = "chautara_sanctuary.db"
 
 # Load the RAG Embedding Model (Small & Fast for Hackathons)
@@ -91,8 +103,11 @@ async def generate_nepali_rag_reflections(user_text, story_id):
     Show her that others have faced similar situations and overcome them. 
     Format: Separate 3 responses with |
     """
+    groq = _get_groq()
+    if not groq:
+        return
     try:
-        completion = client.chat.completions.create(
+        completion = groq.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile"
         )

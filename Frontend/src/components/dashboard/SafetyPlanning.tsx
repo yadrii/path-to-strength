@@ -1,6 +1,7 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Phone, MapPin, Backpack, FileText, AlertTriangle } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const SafetyPlanning = () => {
   const { t } = useLanguage();
@@ -20,14 +21,15 @@ const SafetyPlanning = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-display font-bold text-foreground">{t('Safety Planning', 'सुरक्षा योजना')}</h2>
-        <p className="text-muted-foreground text-sm">{t('Practical, not clinical. Your safety comes first.', 'व्यावहारिक, क्लिनिकल होइन। तपाईंको सुरक्षा पहिलो हो।')}</p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow={t('Protection', 'सुरक्षा')}
+        title={t('Safety Planning', 'सुरक्षा योजना')}
+        description={t('Practical, not clinical. Your safety comes first.', 'व्यावहारिक, क्लिनिकल होइन। तपाईंको सुरक्षा पहिलो हो।')}
+      />
 
-      <Card className="border-destructive/20 bg-destructive/5">
-        <CardContent className="p-4 flex items-center gap-3">
+      <Card className="rounded-2xl border-destructive/25 bg-destructive/5 shadow-sm">
+        <CardContent className="flex items-center gap-3 p-4 md:p-5">
           <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
           <p className="text-sm font-medium text-foreground">
             {t('If you are in immediate danger, call 100 (Nepal Police) or 1145 (Women Cell)', 'यदि तपाईं तत्काल खतरामा हुनुहुन्छ भने, 100 (नेपाल प्रहरी) वा 1145 (महिला सेल) मा कल गर्नुहोस्')}
@@ -35,16 +37,16 @@ const SafetyPlanning = () => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg font-sans">
+      <Card className="rounded-2xl border-border/50 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 font-display text-lg font-semibold">
             <Shield className="h-5 w-5 text-primary" />
             {t('If You Need to Leave Quickly', 'यदि तपाईंलाई छिटो जानु पर्छ')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {emergencyItems.map((item, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-sage-light">
+            <div key={i} className="flex items-start gap-3 rounded-xl bg-sage-light/80 p-3.5">
               <item.icon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               <p className="text-sm text-foreground">{item.text}</p>
             </div>
@@ -52,16 +54,16 @@ const SafetyPlanning = () => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg font-sans">
+      <Card className="rounded-2xl border-border/50 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 font-display text-lg font-semibold">
             <Phone className="h-5 w-5 text-primary" />
             {t('Emergency Contacts', 'आपतकालीन सम्पर्कहरू')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {contacts.map((c, i) => (
-            <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div key={i} className="flex items-center justify-between rounded-xl bg-muted/50 p-3.5">
               <span className="text-sm font-medium text-foreground">{c.name}</span>
               <a href={`tel:${c.number}`} className="text-sm text-primary font-semibold hover:underline">{c.number}</a>
             </div>

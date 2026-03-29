@@ -1,6 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import CaseTracker from './CaseTracker';
+import { useAuth } from '@/contexts/AuthContext';
+import { recordAgencyDecision, getJourneyDayCount, getTierFromJourney } from '@/lib/journeyStorage';
+import { clientLocalDateKey } from '@/lib/restorationApi';
+import AgencyTrail from '@/components/dashboard/AgencyTrail';
+import CaseTracker from '@/components/dashboard/CaseTracker';
 
 // ─── Choice Banks ────────────────────────────────────────────────────────────
 const TIER1_CHOICES = (t: (en: string, ne: string) => string) => [
@@ -75,7 +79,6 @@ interface Choice {
 
 interface TodayScreenProps {
   moodColor?: string;
-  signupDate?: Date;
 }
 
 const MOOD_HEX: Record<string, string> = {
@@ -84,19 +87,14 @@ const MOOD_HEX: Record<string, string> = {
   yellow: '#FAC775', nearwhite: '#b0a89a',
 };
 
-function getTier(signupDate: Date): 1 | 2 | 3 {
-  const days = Math.floor((Date.now() - signupDate.getTime()) / 86400000);
-  if (days < 30) return 1;
-  if (days < 60) return 2;
-  return 3;
-}
-
-const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScreenProps) => {
+const TodayScreen = ({ moodColor = 'green' }: TodayScreenProps) => {
   const { t } = useLanguage();
+  const { restoration, restorationReady, saveRestoration } = useAuth();
+  const today = clientLocalDateKey();
   // We use CSS transition with the parent context, but keeping accent fallback
   const accent = MOOD_HEX[moodColor] ?? '#1D9E75';
-  const tier = getTier(signupDate);
-  const dayCount = Math.floor((Date.now() - signupDate.getTime()) / 86400000) + 1;
+  const tier = getTierFromJourney();
+  const dayCount = getJourneyDayCount();
   const choices: Choice[] = TIER1_CHOICES(t);
 
   const [step, setStep]       = useState(0);
@@ -104,13 +102,37 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
   const [sliding, setSliding] = useState(false);
   const [pulse, setPulse]     = useState(false);
 
+  useEffect(() => {
+    if (!restorationReady || !restoration) return;
+    if (restoration.daily_restoration_date === today) {
+      setStep(restoration.daily_restoration_step);
+    } else {
+      setStep(0);
+      if (
+        restoration.daily_restoration_date != null &&
+        restoration.daily_restoration_date !== today
+      ) {
+        void saveRestoration({
+          daily_restoration_date: today,
+          daily_restoration_step: 0,
+        });
+      }
+    }
+  }, [restorationReady, restoration, today, saveRestoration]);
+
   const done = step >= choices.length;
   const current = choices[step] || choices[choices.length - 1];
 
   const submit = (val: string) => {
-    console.log(`[Supabase Log] ${current.id}: ${val} | Tier: ${tier}`);
+    recordAgencyDecision(current.id);
     setTextVal('');
-    
+    const todayStr = clientLocalDateKey();
+    const nextStep = step === choices.length - 1 ? choices.length : step + 1;
+    void saveRestoration({
+      daily_restoration_date: todayStr,
+      daily_restoration_step: nextStep,
+    });
+
     if (step === choices.length - 1) {
       setPulse(true);
       setTimeout(() => setPulse(false), 2000);
@@ -127,6 +149,16 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   const heroBg = `linear-gradient(135deg, #fde8d8 0%, #faf0e6 40%, #e8f5e9 100%)`;
+
+  if (!restorationReady) {
+    return (
+      <div
+        className="min-h-[320px] rounded-[20px] bg-muted/25 animate-pulse"
+        aria-busy="true"
+        aria-label={t('Loading your progress', 'प्रगति लोड हुँदैछ')}
+      />
+    );
+  }
 
   return (
     <>
@@ -146,19 +178,13 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
       </style>
 
       {/* Hero Banner */}
-      <div style={{ padding: '0 0 1.5rem', fontFamily: 'DM Sans, sans-serif' }}>
-        <div style={{
-          background: heroBg,
-          borderRadius: 20,
-          padding: '2rem 2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '1.5rem',
-          flexWrap: 'wrap',
-        }}>
+      <div className="pb-6" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+        <div
+          className="flex flex-col gap-5 rounded-[20px] p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-8"
+          style={{ background: heroBg }}
+        >
           {/* Left: title */}
-          <div style={{ flex: 1, minWidth: 220 }}>
+          <div className="min-w-0 w-full flex-1 sm:min-w-[220px]">
             <p style={{ fontSize: 11, color: '#9a8e84', letterSpacing: '0.08em', marginBottom: 6 }}>{t('Daily Restoration', 'आजको पुनर्स्थापना')}</p>
             <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', color: '#2d2520', margin: 0, lineHeight: 1.2 }}>
               {t("Today's 5 Choices", 'आजको ५ छनौट')}
@@ -169,17 +195,16 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
           </div>
 
           {/* Right: info cards */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 200 }}>
+          <div className="flex w-full min-w-0 flex-col gap-2.5 sm:w-auto sm:min-w-[200px]">
             {[
               { icon: '✦', label: t('Today', 'आजको दिन'), value: `${t('Day', 'दिन')} ${dayCount}` },
               { icon: '○', label: t('Done', 'सम्पन्न'),   value: `${done ? 5 : step}/5` },
               { icon: '◎', label: t('Tier', 'स्तर'),      value: `${t('Tier', 'तह')} ${tier}` },
             ].map(card => (
-              <div key={card.label} style={{
-                background: '#fff', borderRadius: 12, padding: '0.6rem 1rem',
-                display: 'flex', alignItems: 'center', gap: 12,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)', minWidth: 190,
-              }}>
+              <div
+                key={card.label}
+                className="flex min-w-0 items-center gap-3 rounded-xl bg-white py-2.5 pl-3 pr-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)] sm:min-w-[190px]"
+              >
                 <span style={{
                   width: 32, height: 32, borderRadius: '50%', background: '#fff0f0',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -197,27 +222,13 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
 
       {/* Main interaction row */}
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) minmax(260px, 300px)',
-          gap: '1.25rem',
-          alignItems: 'stretch',
-          fontFamily: 'DM Sans, sans-serif',
-        }}
+        className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(260px,300px)] lg:items-stretch"
+        style={{ fontFamily: 'DM Sans, sans-serif' }}
       >
         {/* Left: quiz card — same outer size, denser, larger inner content */}
         <div
-          style={{
-            background: 'var(--card, #fff)',
-            borderRadius: 20,
-            padding: '1.25rem 1.75rem 1.75rem',
-            boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
-            minHeight: 300,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            position: 'relative',
-          }}
+          className="relative flex min-h-[280px] flex-col items-stretch rounded-[20px] bg-card p-4 shadow-[0_2px_16px_rgba(0,0,0,0.07)] sm:min-h-[300px] sm:p-5 sm:pb-7 md:px-7"
+          style={{ background: 'var(--card, #fff)' }}
         >
           {/* Step dots — compact strip */}
           <div
@@ -420,16 +431,8 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
 
         {/* Right: Why panel — aligned height, slightly larger type */}
         <div
-          style={{
-            background: 'var(--card, #fff)',
-            borderRadius: 20,
-            padding: '1.35rem 1.5rem',
-            boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-start',
-            minHeight: 300,
-          }}
+          className="flex min-h-[240px] flex-col justify-start rounded-[20px] bg-card p-4 shadow-[0_2px_16px_rgba(0,0,0,0.07)] sm:min-h-[300px] sm:p-5 md:px-6"
+          style={{ background: 'var(--card, #fff)' }}
         >
           <p style={{ fontSize: 12, fontWeight: 600, color: '#8a7d72', letterSpacing: '0.1em', marginBottom: 10 }}>
             {t('Why this?', 'किन यसरी?')}
@@ -445,7 +448,7 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
           {!done && (
             <div style={{ marginTop: 'auto', paddingTop: '1.25rem' }}>
               <div style={{ padding: '1rem', background: 'linear-gradient(180deg, #fdf9f6 0%, #faf6f2 100%)', borderRadius: 12, border: '1px solid #f0e8e0' }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: '#a8988c', letterSpacing: '0.08em', marginBottom: 8 }}>{t('Progress', 'प्रगति')}</p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#a8988c', letterSpacing: '0.08em', marginBottom: 8 }}>{t("Today's path", 'आजको बाटो')}</p>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {[0, 1, 2, 3, 4].map((i) => (
                     <div
@@ -469,8 +472,10 @@ const TodayScreen = ({ moodColor = 'green', signupDate = new Date() }: TodayScre
         </div>
       </div>
 
-      {/* Put the CaseTracker BELOW the new layout per instructions */}
-      <div style={{ marginTop: '3rem' }}>
+      <div style={{ marginTop: '2.5rem' }}>
+        <AgencyTrail />
+      </div>
+      <div style={{ marginTop: '2.5rem' }}>
         <CaseTracker />
       </div>
     </>

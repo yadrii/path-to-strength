@@ -1,110 +1,192 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, UserCheck, UserX, Phone, Video, MessageCircle, Shield, BarChart3, Calendar } from 'lucide-react';
+import { Users, Shield, Calendar, Loader2, CheckCircle2, ClipboardList } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { fetchIncidents, fetchIncidentStats, getTokenFromStorage, type IncidentDto } from '@/lib/incidentsApi';
+import { NgoCaseCard } from '@/components/dashboard/NgoCaseCard';
 
 const NgoDashboard = () => {
   const { t } = useLanguage();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, authReady } = useAuth();
+  const [cases, setCases] = useState<IncidentDto[]>([]);
+  const [stats, setStats] = useState({
+    pending_cases: 0,
+    resolved_cases: 0,
+    pending_anonymous: 0,
+    pending_registered: 0,
+    incidents_this_week: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [audience, setAudience] = useState<'all' | 'anonymous' | 'registered'>('all');
+  const [caseStatus, setCaseStatus] = useState<'all' | 'pending' | 'resolved'>('all');
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  const loadDashboard = useCallback(async () => {
+    const token = getTokenFromStorage();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      const [list, s] = await Promise.all([
+        fetchIncidents(token, audience, caseStatus),
+        fetchIncidentStats(token),
+      ]);
+      setCases(list);
+      setStats(s);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('Could not load dashboard', 'ड्यासबोर्ड लोड गर्न सकिएन'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t, audience, caseStatus]);
+
+  useEffect(() => {
+    if (!authReady || !isAuthenticated || user?.role !== 'ngo') return;
+    void loadDashboard();
+  }, [authReady, isAuthenticated, user?.role, loadDashboard]);
+
+  if (!authReady) {
+    return <div className="min-h-screen bg-background" aria-busy="true" />;
+  }
   if (!isAuthenticated || user?.role !== 'ngo') return <Navigate to="/auth" />;
 
-  const stats = [
-    { label: t('Active Cases', 'सक्रिय मुद्दाहरू'), value: '24', icon: Users, color: 'bg-sage-light text-primary' },
-    { label: t('Anonymous Users', 'अज्ञात प्रयोगकर्ता'), value: '18', icon: Shield, color: 'bg-terracotta-light text-terracotta' },
-    { label: t('Registered Users', 'दर्ता प्रयोगकर्ता'), value: '6', icon: UserCheck, color: 'bg-sage-light text-primary' },
-    { label: t('Sessions This Week', 'यो हप्ताका सत्रहरू'), value: '12', icon: Calendar, color: 'bg-rose-soft text-foreground' },
+  const statCards = [
+    {
+      label: t('Open cases', 'खुला मुद्दा'),
+      value: String(stats.pending_cases),
+      icon: ClipboardList,
+      color: 'bg-sage-light text-primary',
+    },
+    {
+      label: t('Resolved', 'समाधान'),
+      value: String(stats.resolved_cases),
+      icon: CheckCircle2,
+      color: 'bg-primary/15 text-primary',
+    },
+    {
+      label: t('Anonymous (open)', 'अज्ञात (खुला)'),
+      value: String(stats.pending_anonymous),
+      icon: Shield,
+      color: 'bg-terracotta-light text-terracotta',
+    },
+    {
+      label: t('New this week', 'यो हप्ता नयाँ'),
+      value: String(stats.incidents_this_week),
+      icon: Calendar,
+      color: 'bg-rose-soft text-foreground',
+    },
   ];
-
-  const patients = [
-    { id: '1', name: t('Anonymous #42', 'अज्ञात #४२'), type: 'anonymous', stage: t('Court Hearing', 'अदालत सुनुवाइ'), lastActive: '2h ago', urgency: 'medium' },
-    { id: '2', name: 'Sita K.', type: 'registered', stage: t('Police Report', 'प्रहरी रिपोर्ट'), lastActive: '1h ago', urgency: 'high' },
-    { id: '3', name: t('Anonymous #78', 'अज्ञात #७८'), type: 'anonymous', stage: t('Shelter System', 'आश्रय प्रणाली'), lastActive: '5h ago', urgency: 'low' },
-    { id: '4', name: 'Rina T.', type: 'registered', stage: t('Court Hearing', 'अदालत सुनुवाइ'), lastActive: '30m ago', urgency: 'high' },
-    { id: '5', name: t('Anonymous #105', 'अज्ञात #१०५'), type: 'anonymous', stage: t('Court Hearing', 'अदालत सुनुवाइ'), lastActive: '1d ago', urgency: 'low' },
-  ];
-
-  const urgencyColors = {
-    high: 'bg-destructive/10 text-destructive',
-    medium: 'bg-gold-warm/20 text-foreground',
-    low: 'bg-sage-light text-primary',
-  };
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="pt-16">
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          <div className="mb-8">
-            <h1 className="text-3xl font-display font-bold text-foreground">{t('NGO Dashboard', 'एनजीओ ड्यासबोर्ड')}</h1>
-            <p className="text-muted-foreground">{t('Manage and support survivors in their journey', 'बाँचेकाहरूलाई उनीहरूको यात्रामा व्यवस्थापन र समर्थन गर्नुहोस्')}</p>
-          </div>
+      <div className="min-h-[calc(100dvh-var(--nav-offset))] bg-gradient-to-b from-primary/[0.06] via-muted/20 to-background pt-[var(--nav-offset)]">
+        <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-10">
+          <PageHeader
+            eyebrow={t('Coordinator', 'समन्वयक')}
+            title={t('Case coordination', 'मुद्दा समन्वय')}
+            description={t(
+              'Assign teams, track progress, and keep survivors informed — all in one place.',
+              'टोली तोक्नुहोस्, प्रगति हेर्नुहोस्, र बाँचेकाहरूलाई जानकारी दिनुहोस् — एकै ठाउँमा।',
+            )}
+          />
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            {stats.map((s, i) => (
-              <Card key={i}>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${s.color}`}>
+          {error ? (
+            <p className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+            {statCards.map((s, i) => (
+              <Card key={i} className="rounded-2xl border-border/50 bg-card/95 shadow-sm backdrop-blur-sm">
+                <CardContent className="flex items-center gap-3 p-4 md:p-5">
+                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${s.color}`}>
                     <s.icon className="h-5 w-5" />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{s.value}</p>
-                    <p className="text-xs text-muted-foreground">{s.label}</p>
+                  <div className="min-w-0">
+                    <p className="font-display text-2xl font-bold text-foreground">{loading ? '—' : s.value}</p>
+                    <p className="text-xs leading-tight text-muted-foreground">{s.label}</p>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Patients */}
-          <Tabs defaultValue="all">
-            <TabsList className="bg-muted mb-6">
-              <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('All', 'सबै')}</TabsTrigger>
-              <TabsTrigger value="anonymous" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('Anonymous', 'अज्ञात')}</TabsTrigger>
-              <TabsTrigger value="registered" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('Registered', 'दर्ता')}</TabsTrigger>
-            </TabsList>
+          <Card className="mb-6 rounded-2xl border-border/60 bg-card/90 shadow-sm">
+            <CardContent className="space-y-4 p-4 md:p-5">
+              <Tabs value={audience} onValueChange={(v) => setAudience(v as typeof audience)} className="w-full">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('Reporter type', 'प्रतिवेदक प्रकार')}</p>
+                <TabsList className="mt-2 flex h-auto min-h-10 w-full flex-wrap gap-1 rounded-xl bg-muted/70 p-1">
+                  <TabsTrigger value="all" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    {t('All', 'सबै')}
+                  </TabsTrigger>
+                  <TabsTrigger value="anonymous" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    {t('Anonymous', 'अज्ञात')}
+                  </TabsTrigger>
+                  <TabsTrigger value="registered" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    {t('Registered', 'दर्ता')}
+                  </TabsTrigger>
+                </TabsList>
 
-            {['all', 'anonymous', 'registered'].map((tab) => (
-              <TabsContent key={tab} value={tab} className="space-y-3">
-                {patients
-                  .filter((p) => tab === 'all' || p.type === tab)
-                  .map((patient) => (
-                    <Card key={patient.id} className="border-border/50 hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-sage-light flex items-center justify-center">
-                              {patient.type === 'anonymous' ? <Shield className="h-5 w-5 text-primary" /> : <UserCheck className="h-5 w-5 text-primary" />}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium text-foreground">{patient.name}</p>
-                                <Badge className={urgencyColors[patient.urgency as keyof typeof urgencyColors]} variant="secondary">
-                                  {patient.urgency}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground">{patient.stage} · {patient.lastActive}</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" className="text-primary hover:bg-sage-light"><MessageCircle className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="text-primary hover:bg-sage-light"><Phone className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="text-primary hover:bg-sage-light"><Video className="h-4 w-4" /></Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('Case status', 'मुद्दा स्थिति')}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(
+                    [
+                      { key: 'all' as const, en: 'All', ne: 'सबै' },
+                      { key: 'pending' as const, en: 'Open', ne: 'खुला' },
+                      { key: 'resolved' as const, en: 'Resolved', ne: 'समाधान' },
+                    ] as const
+                  ).map((opt) => (
+                    <Button
+                      key={opt.key}
+                      type="button"
+                      size="sm"
+                      variant={caseStatus === opt.key ? 'default' : 'secondary'}
+                      className="rounded-full"
+                      onClick={() => setCaseStatus(opt.key)}
+                    >
+                      {t(opt.en, opt.ne)}
+                    </Button>
                   ))}
-              </TabsContent>
-            ))}
-          </Tabs>
+                </div>
+
+                <TabsContent value={audience} className="mt-6 space-y-4 focus-visible:outline-none">
+                  {loading ? (
+                    <div className="flex justify-center py-16 text-muted-foreground">
+                      <Loader2 className="h-9 w-9 animate-spin" aria-hidden />
+                    </div>
+                  ) : cases.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 py-14 text-center">
+                      <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/60" aria-hidden />
+                      <p className="text-sm text-muted-foreground">{t('No cases in this view.', 'यो दृश्यमा कुनै मुद्दा छैन।')}</p>
+                    </div>
+                  ) : (
+                    cases.map((c) => (
+                      <NgoCaseCard
+                        key={c.id}
+                        patient={c}
+                        t={t}
+                        onUpdated={loadDashboard}
+                        updatingId={updatingId}
+                        setUpdatingId={setUpdatingId}
+                      />
+                    ))
+                  )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

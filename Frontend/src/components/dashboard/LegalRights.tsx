@@ -1,7 +1,8 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { BookOpen, ExternalLink } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
+import MannKoKura from '@/components/dashboard/MannKoKura';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const LegalRights = () => {
   const { t } = useLanguage();
@@ -30,15 +31,19 @@ const LegalRights = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-display font-bold text-foreground">{t('Know Your Rights', 'आफ्ना अधिकार जान्नुहोस्')}</h2>
-        <p className="text-muted-foreground text-sm">{t('In plain language, not legal jargon. Knowledge is power.', 'सरल भाषामा, कानुनी शब्दावली होइन। ज्ञान शक्ति हो।')}</p>
+    <div className="space-y-8">
+      <div className="border-b border-border/60 pb-10">
+        <MannKoKura variant="embedded" />
       </div>
+      <PageHeader
+        eyebrow={t('Legal', 'कानुनी')}
+        title={t('Know Your Rights', 'आफ्ना अधिकार जान्नुहोस्')}
+        description={t('In plain language, not legal jargon. Knowledge is power.', 'सरल भाषामा, कानुनी शब्दावली होइन। ज्ञान शक्ति हो।')}
+      />
 
       <div className="space-y-4">
         {rights.map((right, i) => (
-          <Card key={i} className="border-border/50 hover:shadow-md transition-shadow">
+          <Card key={i} className="rounded-2xl border-border/50 shadow-sm transition-shadow hover:shadow-md">
             <CardContent className="p-5">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-lg bg-sage-light flex items-center justify-center shrink-0 mt-0.5">

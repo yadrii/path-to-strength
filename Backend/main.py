@@ -12,8 +12,12 @@ from groq import Groq
 # --- KEEP YOUR FRIEND'S ORIGINAL ROUTER IMPORTS ---
 from speech_to_text import router as stt_router
 from chat import router as chat_router
+from auth_routes import router as auth_router, init_users_db
+from incident_routes import router as incident_router, init_incidents_db
 
 load_dotenv()
+init_users_db()
+init_incidents_db()
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -45,7 +49,20 @@ class InteractionRequest(BaseModel):
 
 # --- DATABASE & GROQ SETUP ---
 CHAUTARA_DB = "chautari_sanctuary.json"
-client = Groq(api_key=os.environ.get("VITE_GROQ_API_KEY"))
+_groq_client = None
+
+
+def _get_groq_client() -> Groq:
+    global _groq_client
+    key = os.environ.get("VITE_GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
+    if not key:
+        raise HTTPException(
+            status_code=503,
+            detail="Set GROQ_API_KEY or VITE_GROQ_API_KEY for moderation features.",
+        )
+    if _groq_client is None:
+        _groq_client = Groq(api_key=key)
+    return _groq_client
 
 def get_db():
     if not os.path.exists(CHAUTARA_DB):
@@ -110,7 +127,7 @@ async def handle_interaction(request: InteractionRequest):
         If it is supportive, kind, or empathetic, respond 'PASS'.
         Respond ONLY with one word: 'PASS' or 'REJECT'.
         """
-        completion = client.chat.completions.create(
+        completion = _get_groq_client().chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile"
         )
@@ -128,6 +145,8 @@ async def light_diya():
     return {"status": "Diya lit"}
 
 # --- INCLUDE THE ORIGINAL ROUTERS (STAY SAFE) ---
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(incident_router, prefix="/api", tags=["incidents"])
 app.include_router(stt_router, prefix="/stt", tags=["Speech To Text"])
 app.include_router(chat_router, prefix="/chat", tags=["Groq AI Chat"])
 
