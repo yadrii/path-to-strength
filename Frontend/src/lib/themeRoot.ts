@@ -5,6 +5,9 @@ const ROOT_MOOD_STYLE_KEYS = [
   '--card',
   '--background',
   '--mood-accent',
+  '--ring',
+  '--sidebar-primary',
+  '--sidebar-ring',
 ] as const;
 
 /** Restore theme tokens from CSS (:root) after mood overrides or logout. */

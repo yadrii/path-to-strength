@@ -31,6 +31,8 @@ export interface CaseEventPersisted {
   title: string;
   status: 'completed' | 'upcoming' | 'delayed';
   emotionalNote?: string;
+  /** User notes for this timeline step; stored with the case event. */
+  notes?: string;
 }
 
 export function ensureJourneyStart(): number {

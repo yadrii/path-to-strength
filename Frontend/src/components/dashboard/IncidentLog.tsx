@@ -21,7 +21,17 @@ import { cn } from '@/lib/utils';
 import { CaseProgressStrip } from '@/components/dashboard/CaseProgressStrip';
 import { progressLabel, unitLabel } from '@/lib/incidentMeta';
 
-const IncidentLog = () => {
+const POSTPONEMENT_INSIGHT = {
+  en: 'In Nepal, domestic violence cases take an average of 2.8 years to resolve in district courts. What is happening to you is a documented, systemic pattern — not a reflection of the validity of your case or your worth as a person.',
+  ne: 'नेपालमा जिल्ला अदालतहरूमा घरेलु हिंसासम्बन्धी मुद्दाहरू समाधान हुन औसत २.८ वर्ष लाग्ने देखिन्छ। तपाईंसँग भइरहेको यो प्रमाणित, प्रणालीगत ढाँचाको हिस्सा हो — तपाईंको मुद्दाको वैधता वा तपाईंको मूल्यको प्रतिबिम्ब होइन।',
+} as const;
+
+interface IncidentLogProps {
+  /** Nested under Case Tracker: no duplicate page header. */
+  embedded?: boolean;
+}
+
+const IncidentLog = ({ embedded = false }: IncidentLogProps) => {
   const { t } = useLanguage();
   const [showForm, setShowForm] = useState(false);
   const [incidentType, setIncidentType] = useState('');
@@ -34,6 +44,7 @@ const IncidentLog = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'resolved'>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [postponementInsightOpen, setPostponementInsightOpen] = useState(false);
 
   const loadList = useCallback(async () => {
     const token = getTokenFromStorage();
@@ -59,7 +70,10 @@ const IncidentLog = () => {
   }, [loadList]);
 
   const supportMessages: Record<string, string> = {
-    court_delay: t('Another delay. Your frustration is valid. This is documented and it matters.', 'अर्को ढिलाइ। तपाईंको निराशा मान्य छ।'),
+    court_delay: t(
+      'Court timelines are often long; your case still matters.',
+      'अदालती समय अक्सर लामो हुन सक्छ; तपाईंको मुद्दा अझै महत्त्वपूर्ण छ।',
+    ),
     police_dismissal: t('Being dismissed is painful. You deserve to be heard. We hear you.', 'अस्वीकार हुनु पीडादायक छ। तपाईं सुनिनु योग्य हुनुहुन्छ।'),
     threat: t('Your safety comes first. Consider reaching out to the safety planning module.', 'तपाईंको सुरक्षा पहिलो हो। सुरक्षा योजना मोड्युलमा सम्पर्क गर्नुहोस्।'),
     other: t('Whatever you are feeling right now is valid. You are not alone.', 'तपाईंले अहिले जे महसुस गरिरहनु भएको छ त्यो मान्य छ।'),
@@ -75,6 +89,7 @@ const IncidentLog = () => {
     setSaveError(null);
     setSaving(true);
     try {
+      const wasPostponement = incidentType === 'court_delay';
       await createIncident(token, {
         incident_type: incidentType,
         description: description.trim(),
@@ -86,6 +101,7 @@ const IncidentLog = () => {
       setAnonymousToNgo(false);
       setShowForm(false);
       await loadList();
+      if (wasPostponement) setPostponementInsightOpen(true);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : t('Save failed', 'सुरक्षित गर्न सकिएन'));
     } finally {
@@ -114,18 +130,28 @@ const IncidentLog = () => {
   ];
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        eyebrow={t('Record', 'रेकर्ड')}
-        title={t('Incident Log', 'घटना लग')}
-        description={t('Document what happened. Your voice matters.', 'के भयो दर्ता गर्नुहोस्। तपाईंको आवाज महत्त्वपूर्ण छ।')}
-        action={
+    <div className={cn('space-y-8', embedded && 'space-y-6')}>
+      {!embedded && (
+        <PageHeader
+          eyebrow={t('Record', 'रेकर्ड')}
+          title={t('Incident Log', 'घटना लग')}
+          description={t('Document what happened. Your voice matters.', 'के भयो दर्ता गर्नुहोस्। तपाईंको आवाज महत्त्वपूर्ण छ।')}
+          action={
+            <Button onClick={() => setShowForm(!showForm)} className="btn-hero gap-2 rounded-full px-5 text-sm">
+              <Plus className="h-4 w-4" />
+              {t('Log Incident', 'घटना दर्ता')}
+            </Button>
+          }
+        />
+      )}
+      {embedded && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Button onClick={() => setShowForm(!showForm)} className="btn-hero gap-2 rounded-full px-5 text-sm">
             <Plus className="h-4 w-4" />
             {t('Log Incident', 'घटना दर्ता')}
           </Button>
-        }
-      />
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {filterPills.map((p) => (
@@ -182,7 +208,7 @@ const IncidentLog = () => {
                 )}
               </Label>
             </div>
-            {incidentType && (
+            {incidentType && incidentType !== 'court_delay' && (
               <div className="rounded-lg border border-primary/20 bg-sage-light p-4">
                 <div className="flex items-start gap-2">
                   <Heart className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -325,6 +351,44 @@ const IncidentLog = () => {
           })
         )}
       </div>
+
+      {postponementInsightOpen ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[90] bg-foreground/20 backdrop-blur-[1px] motion-safe:animate-in motion-safe:fade-in-0"
+            aria-label={t('Dismiss', 'बन्द गर्नुहोस्')}
+            onClick={() => setPostponementInsightOpen(false)}
+          />
+          <div
+            className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="postponement-insight-title"
+          >
+            <div
+              className="pointer-events-auto w-full max-w-lg animate-in slide-in-from-bottom fade-in-0 duration-500 motion-reduce:animate-none"
+              style={{ animationFillMode: 'backwards' }}
+            >
+              <div className="rounded-2xl border border-primary/15 bg-card p-5 shadow-[var(--shadow-soft)] md:p-6">
+                <p id="postponement-insight-title" className="font-display text-base font-semibold text-foreground">
+                  {t('Context', 'सन्दर्भ')}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-foreground/90">
+                  {t(POSTPONEMENT_INSIGHT.en, POSTPONEMENT_INSIGHT.ne)}
+                </p>
+                <Button
+                  type="button"
+                  className="btn-hero mt-5 w-full rounded-full sm:w-auto"
+                  onClick={() => setPostponementInsightOpen(false)}
+                >
+                  {t('Continue', 'अगाडि बढ्नुहोस्')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 };

@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { applyMoodThemeFromKey } from '@/lib/moodTheme';
 
 /** Total spill: expand + shrink back (must match CSS animation duration). */
 const SPILL_TOTAL_MS = 2600;
@@ -35,16 +36,7 @@ const MoodGate = ({ onComplete }: MoodGateProps) => {
     
     setSpillCoord({ x, y, color: color.hex });
 
-    // Update root CSS variables to new color scheme with HSL
-    // Extract RGB from HEX simple parser
-    const hex = color.hex.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    
-    // Only set accent as a raw color. Do not overwrite --primary / --card / --background: the app uses
-    // hsl(var(--primary)) etc., so hex values there break buttons and surfaces after leaving the dashboard.
-    document.documentElement.style.setProperty('--mood-accent', color.hex);
+    applyMoodThemeFromKey(color.value);
 
     // After expand + reverse shrink completes
     setTimeout(() => {
